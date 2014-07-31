@@ -1,0 +1,12 @@
+body {
+    font-family: Helvetica;
+}
+
+ol {
+    width: 500px;
+}
+
+.clicked {
+    background: green;
+    color: white;
+}
