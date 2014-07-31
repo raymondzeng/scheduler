@@ -24,15 +24,3 @@ def topsort(nodes, deps):
     topsort_dfs(nodes, deps, visited, solutions)
     return solutions
     
-es = {1:(),
-      2:(),
-      3:(),
-      4:()}
-aas = {1:[],
-       2:[1],
-       3:[],
-       4:[3]}
-
-ans = topsort(es, aas)
-for a in ans:
-    print a
