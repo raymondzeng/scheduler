@@ -1,12 +1,51 @@
 body {
+    padding: 50px;
     font-family: Helvetica;
 }
 
+.button {
+    border: 0;
+    background: #3e779d;
+    -webkit-border-radius: 4px;
+    -moz-border-radius: 4px;
+    border-radius: 4px;
+    color: white;
+    font-size: 16pt;
+    font-family: Helvetica, Arial, Sans-Serif;
+    text-decoration: none;
+}
+.button:hover {
+    background: #28597a;
+}
+.button:active {
+    background: #1b435e;
+}
+
+#todo_list {
+    text-align: center;
+    font-size: 16pt;
+}
+
+#todo_list form input[type="text"] {
+    height: 30px;
+    font-size: 16pt;
+}
+
+#list {
+    margin: 0 auto;
+}
+
+#list li:hover {
+    cursor: pointer;
+}
+
+#list li {
+    padding: 10px;
+}
 ol {
     width: 500px;
 }
 
 .clicked {
     background: green;
-    color: white;
 }
