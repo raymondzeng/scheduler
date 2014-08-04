@@ -10,7 +10,6 @@
   </div>
   
   <div id="todo_list"> 
-
     <form>
       <input id="searchTextField" type="text" size="50" placeholder="Enter an address or POI">
       <input id="add_btn" type="button" class="button" value="ADD">

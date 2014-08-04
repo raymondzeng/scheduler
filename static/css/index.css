@@ -22,8 +22,20 @@ body {
 }
 
 #todo_list {
+    float: right;
     text-align: center;
     font-size: 16pt;
+}
+
+#map_container {
+    width: 50%;
+    float: left;
+}
+
+#map {
+    float: right;
+    width: 100%;
+    height: 100%;
 }
 
 #todo_list form input[type="text"] {
@@ -49,3 +61,4 @@ ol {
 .clicked {
     background: green;
 }
+
