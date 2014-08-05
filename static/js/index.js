@@ -4,6 +4,10 @@ var searchBox;
 var markers = [];
 var MARKER_PATH = 'https://maps.gstatic.com/intl/en_us/mapfiles/marker_green';
 
+var distances = {};
+var hours = {};
+var ids = [];
+
 $(document).ready(function() {
     $("#searchTextField").focus();
     $('#searchTextField').keypress(function (e) {
@@ -143,13 +147,15 @@ function add_click_listeners() {
     });
 }
 
-
-distances = {};
-
 // submit to server
 function submitTasks() {
     // each marker in markers should have properties 
     // 'place_id', 'hours', and 'position'
+    
+    // create list of task ids
+    ids = markers.map(function(m) {
+        return m.place_id
+    });
     
     // create a dict of place_id : periods
     // periods is an array of opening periods covering seven days, starting from Sunday, in chronological order.
@@ -160,10 +166,20 @@ function submitTasks() {
         hours[markers[i].place_id] = markers[i].hours;
     }
 
-    // generate a dictioanry where the key is the JSONified list of two Latlng objects and the value is the distance object
-    var distances = {};
+    // for every unique pair of nodes, if we don't already have the distance info,
+    // call Google Maps API to get it
+    // and when we have all distance info, submit all data (distance, hours, user_prefs) to server
+    if (maybe_submit()) 
+        return;
+
     for (var i = 0; i < markers.length; i++) {
         for (var j = i + 1; j < markers.length; j++) {
+            var key = markers[i].place_id + "," + markers[j].place_id
+            
+            // already have the distance value for this pair
+            if (distances[key] != undefined)
+                continue
+
             var request = {
                 origin: markers[i].position,
                 destination: markers[j].position,
@@ -178,42 +194,40 @@ function submitTasks() {
 function distanceCallback(i, j) {
     return function(response, status) {
         if (status == google.maps.DirectionsStatus.OK) {
-            var key_obj = {
-                "from" : markers[i].place_id,
-                "to" : markers[j].place_id
-            };
             
-            var key = JSON.stringify(key_obj);
+            var key = markers[i].place_id + "," + markers[j].place_id
             
             var distance = response.routes[0].legs[0].distance;
             distances[key] = distance;
-            
-            // there will always be n choose 2 unordered pairs of nodes
-            // where n is the number of markers
-            // because math
-            if (_.size(distances) === choose(markers.length, 2)) {
-                console.log(distances);
-                $.ajax({
-                    type : "POST",
-                    url : "/submit",
-                    data: JSON.stringify({
-                        "distances" : distances,
-                        "hours" : hours
-                        }),
-                    contentType: 'application/json; charset=UTF-8',
-                    success: function(data) {
-                        console.log(data);
-                    }
-                });
-                
-            }
+            maybe_submit();
         } else { // status is not OK
             console.log(status);
         }
     };
 }
 
-
+function maybe_submit() {
+    // there will always be (n choose 2) unordered pairs of nodes
+    // where n is the number of markers
+    if (_.size(distances) === choose(markers.length, 2)) {
+        $.ajax({
+            type : "POST",
+            url : "/submit",
+            data: JSON.stringify({
+                "ids" : ids,
+                "distances" : distances,
+                "hours" : hours
+            }),
+            contentType: 'application/json; charset=UTF-8',
+            success: function(data) {
+                console.log(data);
+            }
+        });
+        return true;
+    } else {
+        return false;
+    }
+}
 
 // Utils
 function choose(n, k) {
@@ -221,7 +235,7 @@ function choose(n, k) {
 }
 
 function fact(n) {
-    return (n<2) ? 1 : n * fact(n-1);
+   return (n<2) ? 1 : n * fact(n-1);
 }
 
 
