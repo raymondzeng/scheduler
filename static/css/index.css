@@ -21,14 +21,27 @@ body {
     background: #1b435e;
 }
 
+.button.delete_btn {
+    background: red;
+}
+
+.button.dep_btn {
+    background: green;
+}
+
 #todo_list {
+    width: 70%;
     float: right;
     text-align: center;
     font-size: 16pt;
 }
 
+.task_str {
+    padding: 10px;
+}
+
 #map_container {
-    width: 50%;
+    width: 30%;
     float: left;
 }
 
@@ -38,27 +51,28 @@ body {
     height: 100%;
 }
 
-#todo_list form input[type="text"] {
+#todo_list > input[type="text"] {
     height: 30px;
     font-size: 16pt;
 }
 
 #list {
     margin: 0 auto;
+    margin-bottom: 20px;
 }
 
-#list li:hover {
-    cursor: pointer;
-}
-
-#list li {
+#list tr {
     padding: 10px;
+    font-size: 15pt;
 }
-ol {
-    width: 500px;
+
+#list td {
+    text-align: center;
+    max-width: 400px;
+    border-bottom: 1px solid #ccc;
+    margin: 0;
 }
 
 .clicked {
     background: green;
 }
-

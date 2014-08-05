@@ -8,19 +8,16 @@ var distances = {};
 var hours = {};
 var ids = [];
 
+var NYC_LATLNG = null;
+var ZOOM_DEFAULT = 13;
+
 $(document).ready(function() {
     $("#searchTextField").focus();
     $('#searchTextField').keypress(function (e) {
         if (e.which == 13) {
-            add_item($(this).val());
             e.preventDefault();
         }
-    });
-    
-    $("#add_btn").click(function() {
-        add_item($("#searchTextField").val());
-    });
-
+    });    
     initGoogleMaps();
 });
 
@@ -29,12 +26,12 @@ $(document).ready(function() {
 // Google Maps
 
 function initGoogleMaps() {
-    var NYC_LATLNG = new google.maps.LatLng(40.790278, -73.959722);
-
+    NYC_LATLNG = new google.maps.LatLng(40.790278, -73.959722);
+    
     // create the map element
     map = new google.maps.Map(document.getElementById('map'), {
         center: NYC_LATLNG,
-        zoom: 13,
+        zoom: ZOOM_DEFAULT,
         maxZoom: 18
     });
     
@@ -68,8 +65,7 @@ function initGoogleMaps() {
 function onPlaceChanged() {
     var place = searchBox.getPlaces();
     if (place[0].geometry) {
-        $("#searchTextField").val("");
-
+        add_item(place[0].place_id, place[0].name, place[0].formatted_address);
         map.panTo(place[0].geometry.location);
         var markerLetter = String.fromCharCode('A'.charCodeAt(0) + markers.length);
         var markerIcon = MARKER_PATH + markerLetter + '.png';
@@ -81,6 +77,7 @@ function onPlaceChanged() {
             icon: markerIcon
         });
         
+
         // marker.position is a LatLng obj
         marker.place_id = place[0].place_id;
         marker.hours = place[0].opening_hours;
@@ -106,6 +103,12 @@ function onPlaceChanged() {
 }
 
 function zoomToFit() {
+    if (markers.length == 0) {
+        map.panTo(NYC_LATLNG);
+        map.setZoom(ZOOM_DEFAULT);
+        return;
+    }
+    
     // Create a new viewpoint bound
     var bounds = new google.maps.LatLngBounds();
     // Go through each...
@@ -122,30 +125,34 @@ function zoomToFit() {
 
 // UI 
 
-function add_item(str) {
-    $("#input_box").val("");
-    task_str = '<span class="task_str">' + str + '</span>';
-
-    btn = '<input type="button" class="button" value="X">';
-    html = $("<li>" + task_str + "</li>");
-        
+function add_item(id, name, addr) {
+    task_str = '<td class="task_str"><b>' + name + '</b> <address>' + addr + '</address></td>';
+    deps_btn = '<td><input type="button" class="button dep_btn" value="+"></td>';
+    x_btn = '<td><input type="button" class="button delete_btn" value="x"></td>';
+    html = '<tr id="tr_' + id + '">' + task_str + deps_btn + x_btn + '</tr>';
+    
     $("#list").append(html);
     
-    add_click_listeners();
+    $("#tr_" + id + " .delete_btn").click(function() {
+        var tr = $(this).parent().parent().remove();
+        var marker = find_marker(id);
+        marker.setMap(null);
+        markers = _.without(markers, marker);
+        zoomToFit();
+    });
 }
 
-function add_click_listeners() {
-    $(".task_str").click(function() {
-        if ($(this).hasClass("clicked"))
-            $(this).removeClass("clicked");
-        else
-            $(this).addClass("clicked");
-    });
-    
-    $("input[value='X']").click(function() {
-        console.log("x");
-    });
+function find_marker(id) {
+    for (var i = 0; i < markers.length; i++) {
+        if (markers[i].place_id == id) {
+            return markers[i];
+        }
+    }
+    return null;
 }
+
+
+
 
 // submit to server
 function submitTasks() {
