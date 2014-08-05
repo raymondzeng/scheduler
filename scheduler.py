@@ -1,6 +1,22 @@
 from topsort import topsort
 from itertools import izip
+from datetime import datetime
 
+def process_then_run(hours, distances):
+    """
+    process the two JSON dicts and return the best schedule
+    """
+    # assumes tasks must be scheduled today so figure out the operating hours of the location today
+    
+    # today's weekday ; datetime.weekday() uses Monday as 0 and Sunday as 6 
+    # but Google Maps uses Sunday as 0 and Saturday as 6, hence the math
+    
+    # TODO not sure if correct, 
+    weekday = (datetime.now().weekday() + 1) % 7
+
+    for task_id, times in hours.items():
+        print times[weekday]
+    
 def valid_schedules(tasks, deps):
     """
     Returns a list of valid orderings based on dependencies and time constraints
@@ -61,22 +77,23 @@ def get_dist(dists, a, b):
         
 # <task_id> : (available, duraction, deadline)
 # the task can be done anytime between available and deadline
-tasks = { 1: (10, 2, 24),
-          2: (11, 1, 14),
-          3: (13, 1, 15),
-          4: (14, 4, 18) }
+if __name__ == "__main__":
+    tasks = { 1: (10, 2, 24),
+              2: (11, 1, 14),
+              3: (13, 1, 15),
+              4: (14, 4, 18) }
+    
+    distances = { (1, 2) : 10,
+                  (1, 3) : 12,
+                  (1, 4) : 10,
+                  (2, 3) : 5,
+                  (2, 4) : 19,
+                  (3, 4) : 16 }
 
-distances = { (1, 2) : 10,
-              (1, 3) : 12,
-              (1, 4) : 10,
-              (2, 3) : 5,
-              (2, 4) : 19,
-              (3, 4) : 16 }
-
-deps = { 1: [],
-         2: [1],
-         3: [],
-         4: [3] }
-
-vs = valid_schedules(tasks, deps)
-print shortest_path(tasks, distances, vs)
+    deps = { 1: [],
+             2: [1],
+             3: [],
+             4: [3] }
+    
+    vs = valid_schedules(tasks, deps)
+    print shortest_path(tasks, distances, vs)
