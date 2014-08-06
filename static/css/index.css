@@ -3,6 +3,15 @@ body {
     font-family: Helvetica;
 }
 
+table {
+    border-spacing: 0;
+}
+
+#list address {
+    font-size: 13pt;
+    font-style: normal;
+}
+
 .button {
     border: 0;
     background: #3e779d;
@@ -14,6 +23,7 @@ body {
     font-family: Helvetica, Arial, Sans-Serif;
     text-decoration: none;
 }
+
 .button:hover {
     background: #28597a;
 }
@@ -29,6 +39,10 @@ body {
     background: green;
 }
 
+.button:disabled {
+    background: gray;
+}
+
 #todo_list {
     width: 70%;
     float: right;
@@ -36,8 +50,17 @@ body {
     font-size: 16pt;
 }
 
+#adding_dep {
+    margin: 10px;
+    visibility: hidden;
+}
+
 .task_str {
     padding: 10px;
+}
+
+.dep_selected {
+    background: cyan;
 }
 
 #map_container {
@@ -67,10 +90,21 @@ body {
 }
 
 #list td {
-    text-align: center;
     max-width: 400px;
     border-bottom: 1px solid #ccc;
     margin: 0;
+}
+
+#list td:first-child {
+    width: 400px;
+}
+
+.dependency {
+    font-size: 13pt;
+}
+
+.dependency td:first-child {
+    padding-left: 70px;
 }
 
 .clicked {

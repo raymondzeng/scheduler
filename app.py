@@ -16,11 +16,12 @@ def submit():
     Normalize that data and pass it to the algorithms. Render the results page with the results from the algorithms.
     """
     json = request.get_json()
-    ids = json["ids"]
-    hours = json["hours"]
-    distances = json["distances"]
-    print "ids", ids
-    process_then_run(ids, hours, distances)
+    ids = json['ids']
+    hours = json['hours']
+    distances = json['distances']
+    deps = json['dependencies']
+    print "deps", deps
+    process_then_run(ids, hours, distances, deps)
     return "GOOD"
 
 if __name__ == '__main__':

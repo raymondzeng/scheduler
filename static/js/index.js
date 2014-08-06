@@ -7,6 +7,7 @@ var MARKER_PATH = 'https://maps.gstatic.com/intl/en_us/mapfiles/marker_green';
 var distances = {};
 var hours = {};
 var ids = [];
+var deps = {};
 
 var NYC_LATLNG = null;
 var ZOOM_DEFAULT = 13;
@@ -127,19 +128,80 @@ function zoomToFit() {
 
 function add_item(id, name, addr) {
     task_str = '<td class="task_str"><b>' + name + '</b> <address>' + addr + '</address></td>';
-    deps_btn = '<td><input type="button" class="button dep_btn" value="+"></td>';
+    deps_btn = '<td><input type="button" class="button dep_btn" value="+" disabled></td>';
     x_btn = '<td><input type="button" class="button delete_btn" value="x"></td>';
     html = '<tr id="tr_' + id + '">' + task_str + deps_btn + x_btn + '</tr>';
     
     $("#list").append(html);
     
+    $("#tr_" + id + " .task_str").click(function() {
+        if ($(this).hasClass("dep_selected")) 
+            $(this).removeClass("dep_selected");
+        else 
+            $(this).addClass("dep_selected");
+        
+        toggle_dep_buttons();
+    });
+    
     $("#tr_" + id + " .delete_btn").click(function() {
-        var tr = $(this).parent().parent().remove();
+        var tr = $(this).parents("tr").remove();
         var marker = find_marker(id);
         marker.setMap(null);
         markers = _.without(markers, marker);
         zoomToFit();
     });
+    
+    $("#tr_" + id + " .dep_btn").click(function() {
+        var selected = $(".dep_selected");
+        var selected_ids = [];
+        for (var i = 0; i < selected.length; i++) {
+            selected_ids.push($(selected[i]).parents("tr").attr("id").substring(3));
+        }
+        
+        if (deps[id] == undefined) {
+            deps[id] = selected_ids;
+        } else {
+            deps[id].extend(selected_ids);
+        }
+                
+        selected.each(function() {
+            $(this).removeClass("dep_selected");
+        });
+        
+        var names = selected.map(function(idx, el) {
+            return $(el).children("b").html();
+        });
+        
+        var html = "";
+        for (var i = 0; i < names.length; i++) {
+            html += "<tr class='dependency'><td> - " + names[i] + "</td><td></td>" + x_btn + "</tr>";
+        }
+        
+        $("#tr_" + id).after(html);
+
+        toggle_dep_buttons();
+    });
+
+    toggle_dep_buttons();
+}
+
+function toggle_dep_buttons() {
+    var selected = $(".dep_selected");
+    if (selected.length == 0) {
+        $(".dep_btn").each(function() {
+            $(this).attr("disabled", "disabled");
+        });
+    } else {
+        $(".dep_btn").each(function() {
+            $(this).removeAttr("disabled");
+        });
+        
+        // a location can't depend on itself so any selected location 
+        // isn't a valid option to add deps to
+        $(".dep_selected ~ td .dep_btn").each(function() {
+            $(this).attr("disabled", "disabled");
+        });
+    }
 }
 
 function find_marker(id) {
@@ -150,8 +212,6 @@ function find_marker(id) {
     }
     return null;
 }
-
-
 
 
 // submit to server
@@ -223,7 +283,8 @@ function maybe_submit() {
             data: JSON.stringify({
                 "ids" : ids,
                 "distances" : distances,
-                "hours" : hours
+                "hours" : hours,
+                "dependencies" : deps
             }),
             contentType: 'application/json; charset=UTF-8',
             success: function(data) {

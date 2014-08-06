@@ -2,7 +2,7 @@ from topsort import topsort
 from itertools import izip
 from datetime import datetime
 
-def process_then_run(ids, operating_hours, distances):
+def process_then_run(ids, operating_hours, distances, deps):
     # TODO : get user time preferences
     """
     process the two JSON dicts and returns the best schedule
@@ -25,11 +25,14 @@ def process_then_run(ids, operating_hours, distances):
     # TODO : make this unnecessary 
     # important to initalize deps so that every task has a value 
     # otherwise the algorithm throws KeyError
-    deps = {}
+    dependencies = {}
     for task_id in times_dict.keys():
-        deps[task_id] = []
+        if task_id in deps:
+            dependencies[task_id] = deps[task_id]
+        else:
+            dependencies[task_id] = []
         
-    print find_itinerary(times_dict, edge_weights, deps)
+    print find_itinerary(times_dict, edge_weights, dependencies)
 
 def process_times(ids, operating_hours):
     times_dict = {}
