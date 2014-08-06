@@ -66,7 +66,11 @@ function initGoogleMaps() {
 function onPlaceChanged() {
     var place = searchBox.getPlaces();
     if (place[0].geometry) {
-        add_item(place[0].place_id, place[0].name, place[0].formatted_address);
+        add_item(place[0].place_id, 
+                 place[0].name, 
+                 place[0].formatted_address,
+                 place[0].opening_hours);
+
         map.panTo(place[0].geometry.location);
         var markerLetter = String.fromCharCode('A'.charCodeAt(0) + markers.length);
         var markerIcon = MARKER_PATH + markerLetter + '.png';
@@ -78,15 +82,8 @@ function onPlaceChanged() {
             icon: markerIcon
         });
         
-
         // marker.position is a LatLng obj
         marker.place_id = place[0].place_id;
-        marker.hours = place[0].opening_hours;
-        marker.address = place[0].formatted_address;
-        
-        // if opening_hours is not undefined, we actually just want periods
-        if (marker.hours) 
-            marker.hours = marker.hours.periods;
         
         marker.setMap(map);
         
@@ -126,11 +123,32 @@ function zoomToFit() {
 
 // UI 
 
-function add_item(id, name, addr) {
-    task_str = '<td class="task_str"><b>' + name + '</b> <address>' + addr + '</address></td>';
-    deps_btn = '<td><input type="button" class="button dep_btn" value="+" disabled></td>';
-    x_btn = '<td><input type="button" class="button delete_btn" value="x"></td>';
-    html = '<tr id="tr_' + id + '">' + task_str + deps_btn + x_btn + '</tr>';
+// hours can be undefined; if it is, we actually want hours.periods
+function add_item(id, name, addr, hours) {
+    var earliest, duration, latest;
+    duration = 1;
+    
+    if (hours == undefined) {
+        earliest = "0:00";
+        latest = "24:00";
+    } else {
+        // Sun = 0, Sat = 6; same as Google Maps
+        var todays_weekday = new Date().getDay();
+
+        var close_open = hours.periods[todays_weekday];
+
+        // TODO : somethings (Central Park) are open from 6am to 1am. deal with this
+        earliest = close_open['open']['hours'] + ":" + (close_open['open']['minutes'] == 0 ? "00" : close_open['open']['minutes']);
+        latest = close_open['close']['hours'] + ":" + (close_open['close']['minutes'] == 0 ? "00" : close_open['close']['minutes']);
+    }
+    
+    var task_str = '<td class="task_str"><b>' + name + '</b> <address>' + addr + '</address></td>';
+    var times = "<td class='time'>" + earliest 
+        + "</td><td class='time'>" + duration 
+        + "</td><td class='time'>" + latest + "</td>";
+    var deps_btn = '<td><input type="button" class="button dep_btn" value="+" disabled></td>';
+    var x_btn = '<td><input type="button" class="button delete_btn" value="x"></td>';
+    var html = '<tr id="tr_' + id + '">' + task_str + times + deps_btn + x_btn + '</tr>';
     
     $("#list").append(html);
     
@@ -152,7 +170,7 @@ function add_item(id, name, addr) {
     });
     
     $("#tr_" + id + " .dep_btn").click(function() {
-        # TODO : cant add dep once already has some
+        // TODO : cant add dep once already has some
         var selected = $(".dep_selected");
         var selected_ids = [];
         for (var i = 0; i < selected.length; i++) {
@@ -213,6 +231,7 @@ function find_marker(id) {
     }
     return null;
 }
+
 
 
 // submit to server
