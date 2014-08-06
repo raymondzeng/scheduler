@@ -152,6 +152,7 @@ function add_item(id, name, addr) {
     });
     
     $("#tr_" + id + " .dep_btn").click(function() {
+        # TODO : cant add dep once already has some
         var selected = $(".dep_selected");
         var selected_ids = [];
         for (var i = 0; i < selected.length; i++) {
@@ -174,7 +175,7 @@ function add_item(id, name, addr) {
         
         var html = "";
         for (var i = 0; i < names.length; i++) {
-            html += "<tr class='dependency'><td> - " + names[i] + "</td><td></td>" + x_btn + "</tr>";
+            html += "<tr class='dependency'><td><div>" + names[i] + "</div></td><td></td>" + x_btn + "</tr>";
         }
         
         $("#tr_" + id).after(html);

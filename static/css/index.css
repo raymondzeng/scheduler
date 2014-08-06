@@ -89,7 +89,7 @@ table {
     font-size: 15pt;
 }
 
-#list td {
+td {
     max-width: 400px;
     border-bottom: 1px solid #ccc;
     margin: 0;
@@ -100,11 +100,21 @@ table {
 }
 
 .dependency {
+    padding: 0;
+}
+
+.dependency td {
+    border-bottom: 0;
+}
+
+.dependency td:first-child{
+    padding-left: 70px;
     font-size: 13pt;
 }
 
-.dependency td:first-child {
-    padding-left: 70px;
+.dependency td:first-child div {
+    border-left: 1px solid #ccc;
+    padding-left: 10px;
 }
 
 .clicked {
