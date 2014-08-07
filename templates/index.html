@@ -25,6 +25,17 @@
       </table>
       
       <input id="submit_btn" type="button" class="button" value="Figure it out" onclick="submitTasks()">
+      
+      <div id="instructions">
+        <p>Click on a location's text to select it.</p>
+        <p>When any locations are selected, click the green '+' next to a location to add the selected ones as dependencies.</p>
+        <p>When a location has dependencies, it means those dependencies must be visited first, but in no particular order.</p>
+        <br>
+        <p>Double-click a time to edit it.</p>
+        <p>The three columns are <b>earliest</b>, <b>duration</b>, and <b>latest</b>, respectively.</p>
+        <p>Earliest and latest are in <b>hhmm</b> format where <b>hh</b> is the hour from 0 - 24 and <b>mm</b> is the minutes between 0 - 60.</p>
+        <p>Duration is in minutes.</p>
+        <p>Times can be read as: I want to be here no longer than <b>earliest</b> for <b>duration</b> but no later than <b>latest</b>.</p>
     </div>
   </body>
 </html>

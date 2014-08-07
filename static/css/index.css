@@ -3,6 +3,13 @@ body {
     font-family: Helvetica;
 }
 
+p {
+    margin: 0;
+    padding: 0;
+    font-weight: normal;
+    font-size: 12pt;
+}
+
 table {
     border-spacing: 0;
 }
@@ -80,8 +87,16 @@ table {
     padding: 10px;
 }
 
+.task_str:hover {
+    cursor: pointer;
+}
+
 .dep_selected {
-    background: cyan;
+    background: #5bc0de;
+}
+
+.dep_hovered {
+    background: #8CD3E8;
 }
 
 #map_container {
@@ -118,11 +133,18 @@ td {
 }
 
 tr td:first-child {
+    border-right: 1px solid #ccc;
+    padding: 10px;
+}
+
+tr td:nth-child(2) {
     width: 400px;
 }
 
-.dependency td:first-child {
+.dependency td:nth-child(2) {
     width: 330px;
+    padding-left: 70px;
+    font-size: 13pt;
 }
 
 tr td:nth-child(4) {
@@ -147,11 +169,6 @@ tr td:nth-child(4) {
     border-bottom: 0;
 }
 
-.dependency td:first-child{
-    padding-left: 70px;
-    font-size: 13pt;
-}
-
 .dependency td:first-child div {
     border-left: 1px solid #ccc;
     padding-left: 10px;
@@ -159,4 +176,9 @@ tr td:nth-child(4) {
 
 .clicked {
     background: green;
+}
+
+#instructions {
+    text-align: left;
+    margin: 50px;
 }

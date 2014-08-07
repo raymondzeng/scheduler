@@ -44,6 +44,8 @@ function initGoogleMaps() {
     // create the autocompleting text box
     var input = document.getElementById('searchTextField');
     searchBox = new google.maps.places.SearchBox(input);
+    searchBox.bindTo('bounds', map);
+
     // add a listener to when an item is selected from the list
     google.maps.event.addListener(searchBox, 'places_changed', onPlaceChanged);
     
@@ -67,51 +69,79 @@ function initGoogleMaps() {
 function onPlaceChanged() {
     var place = searchBox.getPlaces();
     if (place[0].geometry) {
+        if (_.find(markers, function(n) {return n.id == place[0].place_id;})) {
+            console.log("already added");
+            return;
+        }
+
         map.panTo(place[0].geometry.location);
-        var markerLetter = String.fromCharCode('A'.charCodeAt(0) + markers.length);
-        var markerIcon = MARKER_PATH + markerLetter + '.png';
+        
+        var markerLetter = "A";
+        if (markers.length != 0) {            
+            var lastLetterCode = _.last(markers).letter.charCodeAt(0);
+            var nextLetterCode = lastLetterCode;
+            
+            // we use '-' when we run out of letters
+            if (lastLetterCode != 45) {
+                nextLetterCode = lastLetterCode == 90 ? 0 : lastLetterCode + 1;
+            }            
+            markerLetter = String.fromCharCode(nextLetterCode);
+        }
+
+        var markerIcon = iconPath(MARKER_PATH, markerLetter);
+            + '.png';
         
         // Use marker animation to drop the icons incrementally on the map.
         marker = new google.maps.Marker({
             position: place[0].geometry.location,
             animation: google.maps.Animation.DROP,
-            icon: markerIcon
+            icon: markerIcon,
+            id: place[0].place_id,
+            path: MARKER_PATH,
+            prev: MARKER_PATH,
+            letter: markerLetter
         });
         
-        marker.path = MARKER_PATH;
-        marker.prev = MARKER_PATH;
-        marker.letter = markerLetter;
+        // clicking on a marker selects the corresponding item in list
+        google.maps.event.addListener(marker, 'click', function() {
+            $("#tr_" + this.id + " .task_str").click();
+        });
 
-        // marker.position is a LatLng obj
-        marker.place_id = place[0].place_id;
-        
+        google.maps.event.addListener(marker, 'mouseover', function() {
+            $("#tr_" + this.id + " .task_str").prev().addClass("dep_hovered");
+        });
+
+        google.maps.event.addListener(marker, 'mouseout', function() {
+            $("#tr_" + this.id + " .task_str").prev().removeClass("dep_hovered");
+        });
+
+
         marker.setMap(map);
-        
         markers.push(marker);
         
-        add_item(place[0].place_id, 
+        add_item(marker.id,
                  place[0].name, 
                  place[0].formatted_address,
                  place[0].opening_hours);
         
         zoomToFit();
-
-        // If the user clicks a hotel marker, show the details of that hotel
-        // in an info window.
-       // markers[i].placeResult = results[i];
-       // google.maps.event.addListener(markers[i], 'click', showInfoWindow);
-       // setTimeout(dropMarker(i), i * 100);
-       // addResult(results[i], i);
     }
 }
 
-function zoomToFit() {
+function zoomToFit() { 
     if (markers.length == 0) {
         map.panTo(NYC_LATLNG);
         map.setZoom(ZOOM_DEFAULT);
         return;
     }
     
+    var bounds = smallestBound();
+
+    // Fit these bounds to the map
+    map.fitBounds(bounds);
+}
+
+function smallestBound() {    
     // Create a new viewpoint bound
     var bounds = new google.maps.LatLngBounds();
     // Go through each...
@@ -120,8 +150,8 @@ function zoomToFit() {
         // And increase the bounds to take this point
         bounds.extend(marker.position);
     }
-    // Fit these bounds to the map
-    map.fitBounds(bounds);
+    
+    return bounds;
 }
 
 
@@ -149,24 +179,26 @@ function add_item(id, name, addr, hours) {
         latest = close_open['close']['hours'] * 100 + close_open['close']['minutes'];
     }
     
-    // create the html <tr> element for this location
-    var task_str = '<td class="task_str"><b>' + id + '</b> <address>' + addr + '</address></td>';
-    var times = "<td class='time'><div class='edit_view'>" + earliest + "</div><input type='text' class='edit' value=" + earliest + " which='earliest'></td>"
-        + "<td class='time'><div class='edit_view'>" + duration + "</div><input type='text' class='edit' value=" + duration + " which='duration'></td>"
-        + "<td class='time'><div class='edit_view'>" + latest + "</div><input type='text' class='edit' value=" + latest + " which='latest'></td>";
-    var deps_btn = '<td><input type="button" class="button dep_btn" value="+" disabled></td>';
-    var x_btn = '<td><input type="button" class="button delete_btn" value="x"></td>';
-    var html = '<tr id="tr_' + id + '">' + task_str + times + deps_btn + x_btn + '</tr>';
-    
-    // add that element to the table
-    $("#list").append(html);
-    
     var marker = find_marker(id);
     marker.hours = { 
         "earliest" : earliest,
         "duration" : duration,
         "latest" : latest
     };
+
+    // create the html <tr> element for this location
+    var row_id = '<td>' + marker.letter + '</td>';
+    var task_str = '<td class="task_str"><b>' + id + '</b> <address>' + addr + '</address></td>';
+    var times = "<td class='time'><div class='edit_view'>" + earliest + "</div><input type='text' class='edit' value=" + earliest + " which='earliest'></td>"
+        + "<td class='time'><div class='edit_view'>" + duration + "</div><input type='text' class='edit' value=" + duration + " which='duration'></td>"
+        + "<td class='time'><div class='edit_view'>" + latest + "</div><input type='text' class='edit' value=" + latest + " which='latest'></td>";
+    var deps_btn = '<td><input type="button" class="button dep_btn" value="+" disabled></td>';
+    var x_btn = '<td><input type="button" class="button delete_btn" value="x"></td>';
+    var html = '<tr id="tr_' + id + '">' + row_id + task_str + times + deps_btn + x_btn + '</tr>';
+    
+    // add that element to the table
+    $("#list").append(html);
+    
 
     // click listener for the text of the location that will select it
     // selected locations can be added as deps to other locations
@@ -177,12 +209,12 @@ function add_item(id, name, addr, hours) {
             $(this).removeClass("dep_selected");
             marker.path = MARKER_PATH;
             marker.prev = marker.path;
-            marker.setIcon(marker.path + marker.letter + ".png");
+            marker.setIcon(iconPath(marker.path, marker.letter));
         } else {
             $(this).addClass("dep_selected");
             marker.path = MARKER_SELECTED_PATH;
             marker.prev = marker.path;
-            marker.setIcon(marker.path + marker.letter + ".png");
+            marker.setIcon(iconPath(marker.path,  marker.letter));
         }
         
         toggle_dep_buttons();
@@ -194,11 +226,11 @@ function add_item(id, name, addr, hours) {
         var marker = find_marker(id);
         marker.prev = marker.path;
         marker.path = MARKER_HOVER_PATH;
-        marker.setIcon(marker.path + marker.letter + ".png");
+        marker.setIcon(iconPath(marker.path, marker.letter));
     }, function () {
         var marker = find_marker(id);
         marker.path = marker.prev;
-        marker.setIcon(marker.path + marker.letter + ".png");
+        marker.setIcon(iconPath(marker.path, marker.letter));
     });
     
     // click listener for the 'x' buttons to remove this location 
@@ -234,7 +266,7 @@ function add_item(id, name, addr, hours) {
         
         var html = "";
         for (var i = 0; i < names.length; i++) {
-            html += "<tr id='trd_" + selected_ids[i] + "' class='dependency'><td><div>" + names[i] + "</div></td><td></td><td></td><td></td><td></td>" + x_btn + "</tr>";
+            html += "<tr id='trd_" + selected_ids[i] + "' class='dependency'><td></td><td><div>" + names[i] + "</div></td><td></td><td></td><td></td><td></td>" + x_btn + "</tr>";
         }
         
         $("#tr_" + id).after(html);
@@ -306,7 +338,7 @@ function find_marker(id) {
     // returns null if not found
 
     for (var i = 0; i < markers.length; i++) {
-        if (markers[i].place_id == id) {
+        if (markers[i].id == id) {
             return markers[i];
         }
     }
@@ -318,20 +350,20 @@ function find_marker(id) {
 // submit to server
 function submitTasks() {
     // each marker in markers should have properties 
-    // 'place_id', 'hours', and 'position'
+    // 'id', 'hours', and 'position'
     
     // create list of task ids
     ids = markers.map(function(m) {
-        return m.place_id
+        return m.id
     });
     
-    // create a dict of place_id : periods
+    // create a dict of id : periods
     // periods is an array of opening periods covering seven days, starting from Sunday, in chronological order.
     // https://developers.google.com/maps/documentation/javascript/places#place_details_responses
     // periods can be undefined
     hours = {};
     for (var i = 0; i < markers.length; i++) {
-        hours[markers[i].place_id] = allToMinutes(markers[i].hours);
+        hours[markers[i].id] = allToMinutes(markers[i].hours);
     }
 
     // for every unique pair of nodes, if we don't already have the distance info,
@@ -342,7 +374,7 @@ function submitTasks() {
 
     for (var i = 0; i < markers.length; i++) {
         for (var j = i + 1; j < markers.length; j++) {
-            var key = markers[i].place_id + "," + markers[j].place_id
+            var key = markers[i].id + "," + markers[j].id
             
             // already have the distance value for this pair
             if (distances[key] != undefined)
@@ -363,8 +395,9 @@ function distanceCallback(i, j) {
     return function(response, status) {
         if (status == google.maps.DirectionsStatus.OK) {
             
-            var key = markers[i].place_id + "," + markers[j].place_id
+            var key = markers[i].id + "," + markers[j].id
             
+            console.log(response);
             var distance = response.routes[0].legs[0].distance;
             distances[key] = distance;
             maybe_submit();
@@ -405,6 +438,12 @@ function choose(n, k) {
 
 function fact(n) {
    return (n<2) ? 1 : n * fact(n-1);
+}
+
+function iconPath(prefix, letter) {
+    return prefix 
+        + (letter == "-" ? "" : letter) 
+        + '.png';
 }
 
 function allToMinutes(d) {
