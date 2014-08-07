@@ -193,7 +193,7 @@ function add_item(id, name, addr, hours) {
         
         var html = "";
         for (var i = 0; i < names.length; i++) {
-            html += "<tr class='dependency'><td><div>" + names[i] + "</div></td><td></td>" + x_btn + "</tr>";
+            html += "<tr class='dependency'><td><div>" + names[i] + "</div></td><td></td><td></td><td></td><td></td>" + x_btn + "</tr>";
         }
         
         $("#tr_" + id).after(html);
