@@ -131,16 +131,14 @@ def valid_schedules(tasks, deps):
             
             # unable to get to this task with this schedule so this sched is invalid
             if deadline < time_now + duration:
-             #   print "failed", schedule
                 failed += 1
                 break
 
             time_now = available + duration
         else:
-            #print "vs", schedule
             valids += 1
             result.append(schedule)
-    print "failed: " + str(failed), "success: " + str(valids)
+    print "time constraints => failed: " + str(failed), "success: " + str(valids)
     return result
             
 def shortest_path(tasks, dists, scheds):

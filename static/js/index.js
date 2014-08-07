@@ -331,7 +331,7 @@ function submitTasks() {
     // periods can be undefined
     hours = {};
     for (var i = 0; i < markers.length; i++) {
-        hours[markers[i].place_id] = markers[i].hours;
+        hours[markers[i].place_id] = allToMinutes(markers[i].hours);
     }
 
     // for every unique pair of nodes, if we don't already have the distance info,
@@ -407,4 +407,34 @@ function fact(n) {
    return (n<2) ? 1 : n * fact(n-1);
 }
 
+function allToMinutes(d) {
+    // Input : {"earliest" : xxyy,
+    //          "duration" : m,
+    //          "latest"   : xxyy }
+    //         
+    //     xxyy is an int and xx represents the hour and yy the minutes
+    //          on a 24-hour clock, so 22:30 is 10:30 PM
+    //     m is an int and represents the minutes, so 185 is
+    //       185 minutes, or 3 hours and 5 minutes        
+    //
+    //
+    // Output : all keys in minutes, so really just converting xxyy to minutes
 
+    var earliest = d["earliest"];
+    var latest = d["latest"];
+    
+    // same as Math.floor but handles negatives correctly
+    var e_hour = (earliest / 100) >> 0;
+    var e_min = (earliest % 100);
+    earliest = e_hour * 60 + e_min;
+    
+    var l_hour = (latest / 100) >> 0;
+    var l_min = (latest % 100);
+    latest = l_hour * 60 + l_min;
+    
+    return {
+        "earliest" : earliest,
+        "duration" : d["duration"],
+        "latest" : latest
+    };
+}
