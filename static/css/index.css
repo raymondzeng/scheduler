@@ -96,7 +96,7 @@ table {
     height: 100%;
 }
 
-#todo_list > input[type="text"] {
+#todo_list input[type="text"] {
     height: 30px;
     font-size: 16pt;
 }
@@ -132,6 +132,11 @@ tr td:nth-child(4) {
 .time {
     width: 50px;
     text-align: center;
+}
+
+.time .edit {
+    display: none;
+    width: 50px;
 }
 
 .dependency {

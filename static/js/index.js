@@ -143,9 +143,9 @@ function add_item(id, name, addr, hours) {
     }
     
     var task_str = '<td class="task_str"><b>' + id + '</b> <address>' + addr + '</address></td>';
-    var times = "<td class='time'>" + earliest 
-        + "</td><td class='time'>" + duration 
-        + "</td><td class='time'>" + latest + "</td>";
+    var times = "</td><td class='time'><div class='edit_view'>" + earliest + "</div><input type='text' class='edit' value=" + earliest + "></td>"
+        + "</td><td class='time'><div class='edit_view'>" + duration + "</div><input type='text' class='edit' value=" + duration + "></td>"
+        + "</td><td class='time'><div class='edit_view'>" + latest + "</div><input type='text' class='edit' value=" + latest + "></td>";
     var deps_btn = '<td><input type="button" class="button dep_btn" value="+" disabled></td>';
     var x_btn = '<td><input type="button" class="button delete_btn" value="x"></td>';
     var html = '<tr id="tr_' + id + '">' + task_str + times + deps_btn + x_btn + '</tr>';
@@ -203,6 +203,26 @@ function add_item(id, name, addr, hours) {
         });
         
         toggle_dep_buttons();
+    });
+
+    $(".time").dblclick(function() {
+        var edit_box = $(this).children(".edit");
+        edit_box.css("display", "block");
+        edit_box.focus();
+        edit_box.select();
+        $(this).children(".edit_view").hide();
+    });
+    
+    $(".time .edit").blur(function() {
+        $(this).siblings(".edit_view").show();
+        $(this).hide();
+    });
+    
+    $(".time .edit").keypress(function(e) {
+        if (e.keyCode == 13) {
+            $(this).siblings(".edit_view").html($(this).val());
+            $(this).blur();
+        }
     });
 
     toggle_dep_buttons();
