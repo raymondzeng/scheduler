@@ -142,7 +142,7 @@ function add_item(id, name, addr, hours) {
         latest = close_open['close']['hours'] + ":" + (close_open['close']['minutes'] == 0 ? "00" : close_open['close']['minutes']);
     }
     
-    var task_str = '<td class="task_str"><b>' + name + '</b> <address>' + addr + '</address></td>';
+    var task_str = '<td class="task_str"><b>' + id + '</b> <address>' + addr + '</address></td>';
     var times = "<td class='time'>" + earliest 
         + "</td><td class='time'>" + duration 
         + "</td><td class='time'>" + latest + "</td>";
@@ -170,17 +170,15 @@ function add_item(id, name, addr, hours) {
     });
     
     $("#tr_" + id + " .dep_btn").click(function() {
-        // TODO : cant add dep once already has some
         var selected = $(".dep_selected");
-        var selected_ids = [];
-        for (var i = 0; i < selected.length; i++) {
-            selected_ids.push($(selected[i]).parents("tr").attr("id").substring(3));
-        }
-        
+        var selected_ids = _.map(selected, function(el) {
+            return $(el).parents("tr").attr("id").substring(3);
+        });
+                
         if (deps[id] == undefined) {
             deps[id] = selected_ids;
         } else {
-            deps[id].extend(selected_ids);
+            deps[id] = deps[id].concat(selected_ids);
         }
                 
         selected.each(function() {
@@ -193,11 +191,17 @@ function add_item(id, name, addr, hours) {
         
         var html = "";
         for (var i = 0; i < names.length; i++) {
-            html += "<tr class='dependency'><td><div>" + names[i] + "</div></td><td></td><td></td><td></td><td></td>" + x_btn + "</tr>";
+            html += "<tr id='trd_" + selected_ids[i] + "' class='dependency'><td><div>" + names[i] + "</div></td><td></td><td></td><td></td><td></td>" + x_btn + "</tr>";
         }
         
         $("#tr_" + id).after(html);
 
+        $(".dependency .delete_btn").click(function() {
+            var dep_id = $(this).parents("tr").attr("id").substring(4);
+            deps[id] = _.without(deps[id], dep_id);
+            $(this).parents("tr").remove();
+        });
+        
         toggle_dep_buttons();
     });
 

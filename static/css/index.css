@@ -1,7 +1,3 @@
-html, body {
-    height: 100%;
-}
-
 body {
     padding: 50px;
     font-family: Helvetica;
@@ -121,11 +117,15 @@ td {
     margin: 0;
 }
 
-#list td:first-child {
+tr td:first-child {
     width: 400px;
 }
 
-#list td:nth-child(4) {
+.dependency td:first-child {
+    width: 330px;
+}
+
+tr td:nth-child(4) {
     padding-right: 20px;
 }
 
