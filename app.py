@@ -20,7 +20,6 @@ def submit():
     hours = json['hours']
     distances = json['distances']
     deps = json['dependencies']
-    print "deps", deps
     process_then_run(ids, hours, distances, deps)
     return "GOOD"
 

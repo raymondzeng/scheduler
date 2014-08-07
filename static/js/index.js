@@ -3,7 +3,8 @@ var placesService, directionsService;
 var searchBox;
 var markers = [];
 var MARKER_PATH = 'https://maps.gstatic.com/intl/en_us/mapfiles/marker_green';
-
+var MARKER_HOVER_PATH = 'https://maps.gstatic.com/intl/en_us/mapfiles/marker';
+var MARKER_SELECTED_PATH = 'https://maps.gstatic.com/intl/en_us/mapfiles/marker_orange';
 var distances = {};
 var hours = {};
 var ids = [];
@@ -66,11 +67,6 @@ function initGoogleMaps() {
 function onPlaceChanged() {
     var place = searchBox.getPlaces();
     if (place[0].geometry) {
-        add_item(place[0].place_id, 
-                 place[0].name, 
-                 place[0].formatted_address,
-                 place[0].opening_hours);
-
         map.panTo(place[0].geometry.location);
         var markerLetter = String.fromCharCode('A'.charCodeAt(0) + markers.length);
         var markerIcon = MARKER_PATH + markerLetter + '.png';
@@ -82,14 +78,23 @@ function onPlaceChanged() {
             icon: markerIcon
         });
         
+        marker.path = MARKER_PATH;
+        marker.prev = MARKER_PATH;
+        marker.letter = markerLetter;
+
         // marker.position is a LatLng obj
         marker.place_id = place[0].place_id;
         
         marker.setMap(map);
         
         markers.push(marker);
+        
+        add_item(place[0].place_id, 
+                 place[0].name, 
+                 place[0].formatted_address,
+                 place[0].opening_hours);
+        
         zoomToFit();
-
 
         // If the user clicks a hotel marker, show the details of that hotel
         // in an info window.
@@ -125,12 +130,14 @@ function zoomToFit() {
 
 // hours can be undefined; if it is, we actually want hours.periods
 function add_item(id, name, addr, hours) {
+    // figure out when the place opens/closes, and default duration is 1 hour
+    // user can later edit these
     var earliest, duration, latest;
     duration = 1;
     
     if (hours == undefined) {
-        earliest = "0:00";
-        latest = "24:00";
+        earliest = 0;
+        latest = 2400;
     } else {
         // Sun = 0, Sat = 6; same as Google Maps
         var todays_weekday = new Date().getDay();
@@ -138,29 +145,63 @@ function add_item(id, name, addr, hours) {
         var close_open = hours.periods[todays_weekday];
 
         // TODO : somethings (Central Park) are open from 6am to 1am. deal with this
-        earliest = close_open['open']['hours'] + ":" + (close_open['open']['minutes'] == 0 ? "00" : close_open['open']['minutes']);
-        latest = close_open['close']['hours'] + ":" + (close_open['close']['minutes'] == 0 ? "00" : close_open['close']['minutes']);
+        earliest = close_open['open']['hours'] * 100 + close_open['open']['minutes'];
+        latest = close_open['close']['hours'] * 100 + close_open['close']['minutes'];
     }
     
+    // create the html <tr> element for this location
     var task_str = '<td class="task_str"><b>' + id + '</b> <address>' + addr + '</address></td>';
-    var times = "</td><td class='time'><div class='edit_view'>" + earliest + "</div><input type='text' class='edit' value=" + earliest + "></td>"
-        + "</td><td class='time'><div class='edit_view'>" + duration + "</div><input type='text' class='edit' value=" + duration + "></td>"
-        + "</td><td class='time'><div class='edit_view'>" + latest + "</div><input type='text' class='edit' value=" + latest + "></td>";
+    var times = "<td class='time'><div class='edit_view'>" + earliest + "</div><input type='text' class='edit' value=" + earliest + " which='earliest'></td>"
+        + "<td class='time'><div class='edit_view'>" + duration + "</div><input type='text' class='edit' value=" + duration + " which='duration'></td>"
+        + "<td class='time'><div class='edit_view'>" + latest + "</div><input type='text' class='edit' value=" + latest + " which='latest'></td>";
     var deps_btn = '<td><input type="button" class="button dep_btn" value="+" disabled></td>';
     var x_btn = '<td><input type="button" class="button delete_btn" value="x"></td>';
     var html = '<tr id="tr_' + id + '">' + task_str + times + deps_btn + x_btn + '</tr>';
     
+    // add that element to the table
     $("#list").append(html);
     
+    var marker = find_marker(id);
+    marker.hours = { 
+        "earliest" : earliest,
+        "duration" : duration,
+        "latest" : latest
+    };
+
+    // click listener for the text of the location that will select it
+    // selected locations can be added as deps to other locations
     $("#tr_" + id + " .task_str").click(function() {
-        if ($(this).hasClass("dep_selected")) 
+        var marker = find_marker(id);
+        
+        if ($(this).hasClass("dep_selected")) {
             $(this).removeClass("dep_selected");
-        else 
+            marker.path = MARKER_PATH;
+            marker.prev = marker.path;
+            marker.setIcon(marker.path + marker.letter + ".png");
+        } else {
             $(this).addClass("dep_selected");
+            marker.path = MARKER_SELECTED_PATH;
+            marker.prev = marker.path;
+            marker.setIcon(marker.path + marker.letter + ".png");
+        }
         
         toggle_dep_buttons();
     });
     
+    // when you hover over a location's text, it will change the color
+    // of the marker corresponding to it
+    $("#tr_" + id + " .task_str").hover(function() {
+        var marker = find_marker(id);
+        marker.prev = marker.path;
+        marker.path = MARKER_HOVER_PATH;
+        marker.setIcon(marker.path + marker.letter + ".png");
+    }, function () {
+        var marker = find_marker(id);
+        marker.path = marker.prev;
+        marker.setIcon(marker.path + marker.letter + ".png");
+    });
+    
+    // click listener for the 'x' buttons to remove this location 
     $("#tr_" + id + " .delete_btn").click(function() {
         var tr = $(this).parents("tr").remove();
         var marker = find_marker(id);
@@ -169,6 +210,8 @@ function add_item(id, name, addr, hours) {
         zoomToFit();
     });
     
+    // click listn. to add all selected locations to _this_ location as 
+    // dependencies, meaning that those must be done before _this_
     $("#tr_" + id + " .dep_btn").click(function() {
         var selected = $(".dep_selected");
         var selected_ids = _.map(selected, function(el) {
@@ -205,6 +248,7 @@ function add_item(id, name, addr, hours) {
         toggle_dep_buttons();
     });
 
+    // double-click listn. that opens the input boxes to edit times
     $(".time").dblclick(function() {
         var edit_box = $(this).children(".edit");
         edit_box.css("display", "block");
@@ -213,14 +257,21 @@ function add_item(id, name, addr, hours) {
         $(this).children(".edit_view").hide();
     });
     
+    // when an editing input box is open, if you unfocus the box, 
+    // it will treat it as cancelling the edit and then close the box
     $(".time .edit").blur(function() {
         $(this).siblings(".edit_view").show();
         $(this).hide();
     });
     
+    // save-on-enter mechanics for the edit input boxes
     $(".time .edit").keypress(function(e) {
         if (e.keyCode == 13) {
             $(this).siblings(".edit_view").html($(this).val());
+            var loc_id = $(this).parents("tr").attr("id").substring(3);
+            console.log(loc_id);
+            var marker = find_marker(loc_id);
+            marker.hours[$(this).attr("which")] = parseInt($(this).val());
             $(this).blur();
         }
     });
@@ -229,6 +280,9 @@ function add_item(id, name, addr, hours) {
 }
 
 function toggle_dep_buttons() {
+    // enable all dep btns that can have dependencies addded to depending 
+    // on which ones are selected
+    // (right now, only constraint is that you can't add itself as a dep)
     var selected = $(".dep_selected");
     if (selected.length == 0) {
         $(".dep_btn").each(function() {
@@ -248,6 +302,9 @@ function toggle_dep_buttons() {
 }
 
 function find_marker(id) {
+    // return the marker in @markers with the given id
+    // returns null if not found
+
     for (var i = 0; i < markers.length; i++) {
         if (markers[i].place_id == id) {
             return markers[i];

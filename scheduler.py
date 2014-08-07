@@ -2,7 +2,7 @@ from topsort import topsort
 from itertools import izip
 from datetime import datetime
 
-def process_then_run(ids, operating_hours, distances, deps):
+def process_then_run(ids, hours, distances, deps):
     # TODO : get user time preferences
     """
     process the two JSON dicts and returns the best schedule
@@ -15,13 +15,13 @@ def process_then_run(ids, operating_hours, distances, deps):
     # assumes tasks must be scheduled today so figure out the operating hours of the location today
     
     # times_dict is complete (every task has a value for (available, duration, closing) times
-    # for tasks that didn't have any info from Google Maps, I assume open 24/7 
-    # so the open and close is 0000 and 2400, respectively
-    times_dict = process_times(ids, operating_hours)
+    
+    times_dict = process_times(ids, hours)
+  
     print "times", times_dict
     edge_weights = process_distances(distances)
     print "distances", edge_weights
-    
+ 
     # TODO : make this unnecessary 
     # important to initalize deps so that every task has a value 
     # otherwise the algorithm throws KeyError
@@ -34,8 +34,11 @@ def process_then_run(ids, operating_hours, distances, deps):
         
     print find_itinerary(times_dict, edge_weights, dependencies)
 
-def process_times(ids, operating_hours):
+def process_times(ids, hours):
     times_dict = {}
+    """
+    this stuff is done client side now
+
     # today's weekday ; datetime.weekday() uses Monday as 0 and Sunday as 6 
     # but Google Maps uses Sunday as 0 and Saturday as 6, hence the math
     weekday = (datetime.now().weekday() + 1) % 7
@@ -54,7 +57,13 @@ def process_times(ids, operating_hours):
         except KeyError:
             pass
         times_dict[id] = entry
-
+    """
+    for id in ids:
+        opens = hours[id]["earliest"]
+        closes = hours[id]["latest"]
+        duration = hours[id]["duration"]
+        times_dict[id] = (opens, duration, closes)
+    
     return times_dict
 
 def process_distances(distances):
