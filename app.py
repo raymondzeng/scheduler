@@ -1,4 +1,4 @@
-from flask import Flask, render_template, request
+from flask import Flask, render_template, request, jsonify
 import json
 from scheduler import process_then_run
 
@@ -20,8 +20,9 @@ def submit():
     hours = json['hours']
     distances = json['distances']
     deps = json['dependencies']
-    process_then_run(ids, hours, distances, deps)
-    return "GOOD"
+    dist, sched = process_then_run(ids, hours, distances, deps)
+    return jsonify({"distance" : dist,
+                    "schedule" : sched})
 
 if __name__ == '__main__':
     app.run(debug = True, host='0.0.0.0', port=5000)

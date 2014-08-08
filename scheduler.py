@@ -3,7 +3,6 @@ from itertools import izip
 from datetime import datetime
 
 def process_then_run(ids, hours, distances, deps):
-    # TODO : get user time preferences
     """
     process the two JSON dicts and returns the best schedule
     
@@ -32,7 +31,7 @@ def process_then_run(ids, hours, distances, deps):
         else:
             dependencies[task_id] = []
         
-    print find_itinerary(times_dict, edge_weights, dependencies)
+    return find_itinerary(times_dict, edge_weights, dependencies)
 
 def process_times(ids, hours):
     times_dict = {}
@@ -137,6 +136,7 @@ def valid_schedules(tasks, deps):
             time_now = available + duration
         else:
             valids += 1
+            print "valid: ", schedule
             result.append(schedule)
     print "time constraints => failed: " + str(failed), "success: " + str(valids)
     return result

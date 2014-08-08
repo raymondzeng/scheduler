@@ -130,6 +130,7 @@ td {
     max-width: 400px;
     border-bottom: 1px solid #ccc;
     margin: 0;
+    word-wrap: break-word;
 }
 
 tr td:first-child {

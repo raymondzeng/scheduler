@@ -1,10 +1,11 @@
 var map;
 var placesService, directionsService;
 var searchBox;
-var markers = [];
+var waypoints = [];
 var MARKER_PATH = 'https://maps.gstatic.com/intl/en_us/mapfiles/marker_green';
 var MARKER_HOVER_PATH = 'https://maps.gstatic.com/intl/en_us/mapfiles/marker';
 var MARKER_SELECTED_PATH = 'https://maps.gstatic.com/intl/en_us/mapfiles/marker_orange';
+var directions = {};
 var distances = {};
 var hours = {};
 var ids = [];
@@ -50,26 +51,17 @@ function initGoogleMaps() {
     google.maps.event.addListener(searchBox, 'places_changed', onPlaceChanged);
     
     // create the directions display and attach it to the map
-    directionsDisplay = new google.maps.DirectionsRenderer();
+    directionsDisplay = new google.maps.DirectionsRenderer({
+        suppressMarkers: true,
+        preserveViewport: true
+    });
     directionsDisplay.setMap(map);
-
-    // var request = {
-    //     origin: "soho",
-    //     destination: "Times Sq",
-    //     travelMode: google.maps.TravelMode.TRANSIT
-    // };
-    // directionsService.route(request, function(response, status) {
-    //     if (status == google.maps.DirectionsStatus.OK) {
-    //         directionsDisplay.setDirections(response);
-    //         console.log(response.routes[0].legs[0].distance);
-    //     }
-    // });
 }
 
 function onPlaceChanged() {
     var place = searchBox.getPlaces();
     if (place[0].geometry) {
-        if (_.find(markers, function(n) {return n.id == place[0].place_id;})) {
+        if (_.find(waypoints, function(n) {return n.id == place[0].place_id;})) {
             console.log("already added");
             return;
         }
@@ -77,8 +69,8 @@ function onPlaceChanged() {
         map.panTo(place[0].geometry.location);
         
         var markerLetter = "A";
-        if (markers.length != 0) {            
-            var lastLetterCode = _.last(markers).letter.charCodeAt(0);
+        if (waypoints.length != 0) {            
+            var lastLetterCode = _.last(waypoints).letter.charCodeAt(0);
             var nextLetterCode = lastLetterCode;
             
             // we use '-' when we run out of letters
@@ -89,7 +81,6 @@ function onPlaceChanged() {
         }
 
         var markerIcon = iconPath(MARKER_PATH, markerLetter);
-            + '.png';
         
         // Use marker animation to drop the icons incrementally on the map.
         marker = new google.maps.Marker({
@@ -107,17 +98,16 @@ function onPlaceChanged() {
             $("#tr_" + this.id + " .task_str").click();
         });
 
+        // hovering over a marker temp. highlights the item in list
         google.maps.event.addListener(marker, 'mouseover', function() {
             $("#tr_" + this.id + " .task_str").prev().addClass("dep_hovered");
         });
-
         google.maps.event.addListener(marker, 'mouseout', function() {
             $("#tr_" + this.id + " .task_str").prev().removeClass("dep_hovered");
         });
 
-
         marker.setMap(map);
-        markers.push(marker);
+        waypoints.push(marker);
         
         add_item(marker.id,
                  place[0].name, 
@@ -129,7 +119,7 @@ function onPlaceChanged() {
 }
 
 function zoomToFit() { 
-    if (markers.length == 0) {
+    if (waypoints.length == 0) {
         map.panTo(NYC_LATLNG);
         map.setZoom(ZOOM_DEFAULT);
         return;
@@ -145,8 +135,8 @@ function smallestBound() {
     // Create a new viewpoint bound
     var bounds = new google.maps.LatLngBounds();
     // Go through each...
-    for (var i = 0; i < markers.length; i++) {
-        var marker = markers[i];
+    for (var i = 0; i < waypoints.length; i++) {
+        var marker = waypoints[i];
         // And increase the bounds to take this point
         bounds.extend(marker.position);
     }
@@ -238,7 +228,7 @@ function add_item(id, name, addr, hours) {
         var tr = $(this).parents("tr").remove();
         var marker = find_marker(id);
         marker.setMap(null);
-        markers = _.without(markers, marker);
+        waypoints = _.without(waypoints, marker);
         zoomToFit();
     });
     
@@ -334,12 +324,12 @@ function toggle_dep_buttons() {
 }
 
 function find_marker(id) {
-    // return the marker in @markers with the given id
+    // return the marker in @waypoints with the given id
     // returns null if not found
 
-    for (var i = 0; i < markers.length; i++) {
-        if (markers[i].id == id) {
-            return markers[i];
+    for (var i = 0; i < waypoints.length; i++) {
+        if (waypoints[i].id == id) {
+            return waypoints[i];
         }
     }
     return null;
@@ -349,11 +339,12 @@ function find_marker(id) {
 
 // submit to server
 function submitTasks() {
-    // each marker in markers should have properties 
+    console.log("submit");
+    // each marker in waypoints should have properties 
     // 'id', 'hours', and 'position'
     
     // create list of task ids
-    ids = markers.map(function(m) {
+    ids = waypoints.map(function(m) {
         return m.id
     });
     
@@ -362,8 +353,8 @@ function submitTasks() {
     // https://developers.google.com/maps/documentation/javascript/places#place_details_responses
     // periods can be undefined
     hours = {};
-    for (var i = 0; i < markers.length; i++) {
-        hours[markers[i].id] = allToMinutes(markers[i].hours);
+    for (var i = 0; i < waypoints.length; i++) {
+        hours[waypoints[i].id] = allToMinutes(waypoints[i].hours);
     }
 
     // for every unique pair of nodes, if we don't already have the distance info,
@@ -372,17 +363,17 @@ function submitTasks() {
     if (maybe_submit()) 
         return;
 
-    for (var i = 0; i < markers.length; i++) {
-        for (var j = i + 1; j < markers.length; j++) {
-            var key = markers[i].id + "," + markers[j].id
+    for (var i = 0; i < waypoints.length; i++) {
+        for (var j = i + 1; j < waypoints.length; j++) {
+            var key = waypoints[i].id + "," + waypoints[j].id
             
             // already have the distance value for this pair
             if (distances[key] != undefined)
                 continue
 
             var request = {
-                origin: markers[i].position,
-                destination: markers[j].position,
+                origin: waypoints[i].position,
+                destination: waypoints[j].position,
                 travelMode: google.maps.TravelMode.DRIVING
             };
             
@@ -395,9 +386,10 @@ function distanceCallback(i, j) {
     return function(response, status) {
         if (status == google.maps.DirectionsStatus.OK) {
             
-            var key = markers[i].id + "," + markers[j].id
+            var key = waypoints[i].id + "," + waypoints[j].id
             
-            console.log(response);
+            directions[key] = response;
+            //directionsDisplay.setDirections(response);
             var distance = response.routes[0].legs[0].distance;
             distances[key] = distance;
             maybe_submit();
@@ -409,8 +401,8 @@ function distanceCallback(i, j) {
 
 function maybe_submit() {
     // there will always be (n choose 2) unordered pairs of nodes
-    // where n is the number of markers
-    if (_.size(distances) === choose(markers.length, 2)) {
+    // where n is the number of waypoints
+    if (_.size(distances) === choose(waypoints.length, 2)) {
         $.ajax({
             type : "POST",
             url : "/submit",
@@ -422,7 +414,16 @@ function maybe_submit() {
             }),
             contentType: 'application/json; charset=UTF-8',
             success: function(data) {
-                console.log(data);
+                var sched = data["schedule"];
+                var legs = [];
+                for (var i = 0; i < sched.length - 1; i++) {
+                    var leg = find_directions(sched[i], sched[i+1]);
+                    legs.push(leg);
+                }
+
+                var combined = combine_directions(legs);
+
+                directionsDisplay.setDirections(combined);
             }
         });
         return true;
@@ -444,6 +445,21 @@ function iconPath(prefix, letter) {
     return prefix 
         + (letter == "-" ? "" : letter) 
         + '.png';
+}
+
+function find_directions(f, s) {
+    var maybe = directions[f + "," + s];
+    if (maybe == undefined) 
+        return directions[s + "," + f];
+    return maybe
+}
+
+function combine_directions(legs) {
+    var route = $.extend(true, {}, legs[0]);
+    for (var i = 1; i < legs.length; i++) {
+        route.routes[0].legs = route.routes[0].legs.concat(legs[i].routes[0].legs);
+    }
+    return route;
 }
 
 function allToMinutes(d) {
