@@ -7,10 +7,6 @@ var MARKER_HOVER_PATH = 'https://maps.gstatic.com/intl/en_us/mapfiles/marker';
 var MARKER_SELECTED_PATH = 'https://maps.gstatic.com/intl/en_us/mapfiles/marker_orange';
 var directions = {};
 var distances = {};
-var hours = {};
-var ids = [];
-var deps = {};
-
 var NYC_LATLNG = null;
 var ZOOM_DEFAULT = 13;
 
@@ -290,9 +286,11 @@ function resolveHours(hours) {
 
         var close_open = hours.periods[todays_weekday];
 
-        // TODO : somethings (Central Park) are open from 6am to 1am. deal with this
-        earliest = close_open['open']['hours'] * 100 + close_open['open']['minutes'];
-        latest = close_open['close']['hours'] * 100 + close_open['close']['minutes'];
+        // TODO : some things (Central Park) are open from 6am to 1am. deal with this; it breaks the guarantee that latest > earliest
+        earliest = close_open['open']['hours'] * 100 
+            + close_open['open']['minutes'];
+        latest = close_open['close']['hours'] * 100 
+            + close_open['close']['minutes'];
     }
     
     return {
@@ -305,7 +303,10 @@ function onPlaceChanged() {
     var places = searchBox.getPlaces();
     if (places[0].geometry) {
         var place = places[0];
-        if (_.find(waypoints, function(n) {return n.id == place.place_id;})) {
+
+        if (_.find(waypoints, function(n) {
+            return n.id == place.place_id;
+        })) {
             console.log("already added");
             return;
         }
@@ -336,18 +337,20 @@ function onPlaceChanged() {
             marker: marker
         });
 
+        
+        // FOLLOWING THREE NEED TO BE IMPLEMENTED W/ BACKBONE
         // clicking on a marker selects the corresponding item in list
-        google.maps.event.addListener(marker, 'click', function() {
-            $("#tr_" + this.id + " .task_str").click();
-        });
+        // google.maps.event.addListener(marker, 'click', function() {
+        //     $("#tr_" + this.id + " .task_str").click();
+        // });
 
-        // hovering over a marker temp. highlights the item in list
-        google.maps.event.addListener(marker, 'mouseover', function() {
-            $("#tr_" + this.id + " .task_str").prev().addClass("dep_hovered");
-        });
-        google.maps.event.addListener(marker, 'mouseout', function() {
-            $("#tr_" + this.id + " .task_str").prev().removeClass("dep_hovered");
-        });
+        // // hovering over a marker temp. highlights the item in list
+        // google.maps.event.addListener(marker, 'mouseover', function() {
+        //     $("#tr_" + this.id + " .task_str").prev().addClass("dep_hovered");
+        // });
+        // google.maps.event.addListener(marker, 'mouseout', function() {
+        //     $("#tr_" + this.id + " .task_str").prev().removeClass("dep_hovered");
+        // });
 
         marker.setMap(map);
         waypoints.push(marker);
@@ -358,7 +361,6 @@ function onPlaceChanged() {
 
 function zoomToFit() { 
     if (waypoints.length == 0) {
-        console.log("hello");
         map.panTo(NYC_LATLNG);
         map.setZoom(ZOOM_DEFAULT);
         return;
@@ -383,44 +385,6 @@ function smallestBound() {
     return bounds;
 }
 
-
-
-// UI 
-// function add_item(id, name, addr, hours) {    
-    // create the html <tr> element for this location
-    // var row_id = '<td>' + marker.letter + '</td>';
-    // var task_str = '<td class="task_str"><b>' + id + '</b> <address>' + addr + '</address></td>';
-    // var times = "<td class='time'><div class='edit_view'>" + earliest + "</div><input type='text' class='edit' value=" + earliest + " which='earliest'></td>"
-    //     + "<td class='time'><div class='edit_view'>" + duration + "</div><input type='text' class='edit' value=" + duration + " which='duration'></td>"
-    //     + "<td class='time'><div class='edit_view'>" + latest + "</div><input type='text' class='edit' value=" + latest + " which='latest'></td>";
-    // var deps_btn = '<td><input type="button" class="button dep_btn" value="+" disabled></td>';
-    // var x_btn = '<td><input type="button" class="button delete_btn" value="x"></td>';
-    // var html = '<tr id="tr_' + id + '">' + row_id + task_str + times + deps_btn + x_btn + '</tr>';
-    
-    // // add that element to the table
-    // $("#list").append(html);
-    
-
-    // click listener for the text of the location that will select it
-    // selected locations can be added as deps to other locations
-    // $("#tr_" + id + " .task_str").click(function() {
-    //     var marker = find_marker(id);
-        
-    //     if ($(this).hasClass("dep_selected")) {
-    //         $(this).removeClass("dep_selected");
-    //         marker.path = MARKER_PATH;
-    //         marker.prev = marker.path;
-    //         marker.setIcon(iconPath(marker.path, marker.letter));
-    //     } else {
-    //         $(this).addClass("dep_selected");
-    //         marker.path = MARKER_SELECTED_PATH;
-    //         marker.prev = marker.path;
-    //         marker.setIcon(iconPath(marker.path,  marker.letter));
-    //     }
-        
-    //     toggle_dep_buttons();
-    // });
-    
     // when you hover over a location's text, it will change the color
     // of the marker corresponding to it
     // NOT IMPLEMENTED IN BACKBONE
@@ -434,105 +398,6 @@ function smallestBound() {
     //     marker.path = marker.prev;
     //     marker.setIcon(iconPath(marker.path, marker.letter));
     // });
-    
-    // click listener for the 'x' buttons to remove this location 
-    // $("#tr_" + id + " .delete_btn").click(function() {
-    //     var tr = $(this).parents("tr").remove();
-    //     var marker = find_marker(id);
-    //     marker.setMap(null);
-    //     waypoints = _.without(waypoints, marker);
-    //     zoomToFit();
-    // });
-    
-    // click listn. to add all selected locations to _this_ location as 
-    // dependencies, meaning that those must be done before _this_
-    // $("#tr_" + id + " .dep_btn").click(function() {
-    //     var selected = $(".dep_selected");
-    //     var selected_ids = _.map(selected, function(el) {
-    //         return $(el).parents("tr").attr("id").substring(3);
-    //     });
-                
-    //     if (deps[id] == undefined) {
-    //         deps[id] = selected_ids;
-    //     } else {
-    //         deps[id] = deps[id].concat(selected_ids);
-    //     }
-                
-    //     selected.each(function() {
-    //         $(this).removeClass("dep_selected");
-    //     });
-        
-    //     var names = selected.map(function(idx, el) {
-    //         return $(el).children("b").html();
-    //     });
-        
-    //     var html = "";
-    //     for (var i = 0; i < names.length; i++) {
-    //         html += "<tr id='trd_" + selected_ids[i] + "' class='dependency'><td></td><td><div>" + names[i] + "</div></td><td></td><td></td><td></td><td></td>" + x_btn + "</tr>";
-    //     }
-        
-    //     $("#tr_" + id).after(html);
-
-    //     $(".dependency .delete_btn").click(function() {
-    //         var dep_id = $(this).parents("tr").attr("id").substring(4);
-    //         deps[id] = _.without(deps[id], dep_id);
-    //         $(this).parents("tr").remove();
-    //     });
-        
-    //     toggle_dep_buttons();
-    // });
-
-    // double-click listn. that opens the input boxes to edit times
-    // $(".time").dblclick(function() {
-    //     var edit_box = $(this).children(".edit");
-    //     edit_box.css("display", "block");
-    //     edit_box.focus();
-    //     edit_box.select();
-    //     $(this).children(".edit_view").hide();
-    // });
-    
-    // when an editing input box is open, if you unfocus the box, 
-    // it will treat it as cancelling the edit and then close the box
-    // $(".time .edit").blur(function() {
-    //     $(this).siblings(".edit_view").show();
-    //     $(this).hide();
-    // });
-    
-    // save-on-enter mechanics for the edit input boxes
-    // $(".time .edit").keypress(function(e) {
-    //     if (e.keyCode == 13) {
-    //         $(this).siblings(".edit_view").html($(this).val());
-    //         var loc_id = $(this).parents("tr").attr("id").substring(3);
-    //         console.log(loc_id);
-    //         var marker = find_marker(loc_id);
-    //         $(this).blur();
-    //     }
-    // });
-
-    // toggle_dep_buttons();
-// }
-
-// function toggle_dep_buttons() {
-//     // enable all dep btns that can have dependencies addded to depending 
-//     // on which ones are selected
-//     // (right now, only constraint is that you can't add itself as a dep)
-//     var selected = $(".dep_selected");
-//     if (selected.length == 0) {
-//         $(".dep_btn").each(function() {
-//             $(this).attr("disabled", "disabled");
-//         });
-//     } else {
-//         $(".dep_btn").each(function() {
-//             $(this).removeAttr("disabled");
-//         });
-        
-//         // a location can't depend on itself so any selected location 
-//         // isn't a valid option to add deps to
-//         $(".dep_selected ~ td .dep_btn").each(function() {
-//             $(this).attr("disabled", "disabled");
-//         });
-//     }
-// }
 
 function find_marker(id) {
     // return the marker in @waypoints with the given id
@@ -565,9 +430,12 @@ function submitTasks() {
     // periods can be undefined
     hours = {};
     for (var i = 0; i < waypoints.length; i++) {
-        hours[waypoints[i].id] = allToMinutes(waypoints[i].hours);
+        hours[waypoints[i].id] = allToMinutes(Tasks.get(waypoints[i].id));
     }
 
+    // TOOOO DOOOOOOO <-------
+
+    deps = {};
     // for every unique pair of nodes, if we don't already have the distance info,
     // call Google Maps API to get it
     // and when we have all distance info, submit all data (distance, hours, user_prefs) to server
@@ -673,7 +541,8 @@ function combine_directions(legs) {
     return route;
 }
 
-function allToMinutes(d) {
+function allToMinutes(taskModel) {
+    // DEPRECATED INPUT; INPUT has changed
     // Input : {"earliest" : xxyy,
     //          "duration" : m,
     //          "latest"   : xxyy }
@@ -686,8 +555,8 @@ function allToMinutes(d) {
     //
     // Output : all keys in minutes, so really just converting xxyy to minutes
 
-    var earliest = d["earliest"];
-    var latest = d["latest"];
+    var earliest = taskModel.get("earliest");
+    var latest = taskModel.get("latest");
     
     // same as Math.floor but handles negatives correctly
     var e_hour = (earliest / 100) >> 0;
@@ -700,7 +569,7 @@ function allToMinutes(d) {
     
     return {
         "earliest" : earliest,
-        "duration" : d["duration"],
+        "duration" : taskModel.get("duration"),
         "latest" : latest
     };
 }
