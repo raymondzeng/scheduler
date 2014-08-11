@@ -91,9 +91,12 @@ $(function() {
         template: _.template($("#task-template").html()),
         
         events: {
-            "click .task_str" : "toggleSelected",
+            "click .task_str"   : "toggleSelected",
             "click .delete_btn" : "clear",
-            "click .dep_btn" : "addDeps"
+            "click .dep_btn"    : "addDeps",
+            "dblclick .time"    : "editTime",
+            "blur .edit"        : "close",
+            "keypress .edit"    : "updateOnEnter"
         },
         
         initialize: function() {
@@ -106,9 +109,8 @@ $(function() {
 
         render: function() {
             this.$el.html(this.template(this.model.toJSON()));
-            this.$el.children(".task_str").toggleClass('dep_selected', this.model.get('selected'));
+            this.displaySelected();
             this.$el.children("td").children(".dep_btn").prop("disabled", !this.model.get("canAdd"));
-            this.input = this.$('.edit');
             
             var taskView = this;
             
@@ -145,6 +147,25 @@ $(function() {
             Tasks.deselectAll();
         },
         
+        editTime: function(e) {
+            var edit_box = $(e.target).siblings(".edit");
+            edit_box.css("display", "block").focus().select();
+            $(e.target).hide();
+        },
+        
+        close: function(e) {
+            $(e.target).siblings(".edit_view").show();
+            $(e.target).hide();
+        },
+
+        updateOnEnter: function(e) {
+            if (e.keyCode != 13) return;
+            var which = $(e.target).attr("which");
+            var dict = {};
+            dict[which] = $(e.target).val();
+            this.model.save(dict);
+        },
+        
         clear: function() {
             var marker = this.model.get("marker");
             if (marker) {
@@ -153,6 +174,21 @@ $(function() {
                 zoomToFit();
             }
             this.model.destroy();
+        },
+        
+        displaySelected: function() {
+            var marker = this.model.get("marker");
+            if (this.model.get("selected")) {
+                this.$el.children(".task_str").addClass("dep_selected");
+                marker.path = MARKER_SELECTED_PATH;
+                marker.prev = marker.path;
+                marker.setIcon(iconPath(marker.path,  marker.letter));
+            } else {
+                this.$el.children(".task_str").removeClass("dep_selected");
+                marker.path = MARKER_PATH;
+                marker.prev = marker.path;
+                marker.setIcon(iconPath(marker.path, marker.letter));
+            }
         }
     });
 
@@ -350,154 +386,153 @@ function smallestBound() {
 
 
 // UI 
-
-// hours can be undefined; if it is, we actually want hours.periods
-function add_item(id, name, addr, hours) {    
+// function add_item(id, name, addr, hours) {    
     // create the html <tr> element for this location
-    var row_id = '<td>' + marker.letter + '</td>';
-    var task_str = '<td class="task_str"><b>' + id + '</b> <address>' + addr + '</address></td>';
-    var times = "<td class='time'><div class='edit_view'>" + earliest + "</div><input type='text' class='edit' value=" + earliest + " which='earliest'></td>"
-        + "<td class='time'><div class='edit_view'>" + duration + "</div><input type='text' class='edit' value=" + duration + " which='duration'></td>"
-        + "<td class='time'><div class='edit_view'>" + latest + "</div><input type='text' class='edit' value=" + latest + " which='latest'></td>";
-    var deps_btn = '<td><input type="button" class="button dep_btn" value="+" disabled></td>';
-    var x_btn = '<td><input type="button" class="button delete_btn" value="x"></td>';
-    var html = '<tr id="tr_' + id + '">' + row_id + task_str + times + deps_btn + x_btn + '</tr>';
+    // var row_id = '<td>' + marker.letter + '</td>';
+    // var task_str = '<td class="task_str"><b>' + id + '</b> <address>' + addr + '</address></td>';
+    // var times = "<td class='time'><div class='edit_view'>" + earliest + "</div><input type='text' class='edit' value=" + earliest + " which='earliest'></td>"
+    //     + "<td class='time'><div class='edit_view'>" + duration + "</div><input type='text' class='edit' value=" + duration + " which='duration'></td>"
+    //     + "<td class='time'><div class='edit_view'>" + latest + "</div><input type='text' class='edit' value=" + latest + " which='latest'></td>";
+    // var deps_btn = '<td><input type="button" class="button dep_btn" value="+" disabled></td>';
+    // var x_btn = '<td><input type="button" class="button delete_btn" value="x"></td>';
+    // var html = '<tr id="tr_' + id + '">' + row_id + task_str + times + deps_btn + x_btn + '</tr>';
     
-    // add that element to the table
-    $("#list").append(html);
+    // // add that element to the table
+    // $("#list").append(html);
     
 
     // click listener for the text of the location that will select it
     // selected locations can be added as deps to other locations
-    $("#tr_" + id + " .task_str").click(function() {
-        var marker = find_marker(id);
+    // $("#tr_" + id + " .task_str").click(function() {
+    //     var marker = find_marker(id);
         
-        if ($(this).hasClass("dep_selected")) {
-            $(this).removeClass("dep_selected");
-            marker.path = MARKER_PATH;
-            marker.prev = marker.path;
-            marker.setIcon(iconPath(marker.path, marker.letter));
-        } else {
-            $(this).addClass("dep_selected");
-            marker.path = MARKER_SELECTED_PATH;
-            marker.prev = marker.path;
-            marker.setIcon(iconPath(marker.path,  marker.letter));
-        }
+    //     if ($(this).hasClass("dep_selected")) {
+    //         $(this).removeClass("dep_selected");
+    //         marker.path = MARKER_PATH;
+    //         marker.prev = marker.path;
+    //         marker.setIcon(iconPath(marker.path, marker.letter));
+    //     } else {
+    //         $(this).addClass("dep_selected");
+    //         marker.path = MARKER_SELECTED_PATH;
+    //         marker.prev = marker.path;
+    //         marker.setIcon(iconPath(marker.path,  marker.letter));
+    //     }
         
-        toggle_dep_buttons();
-    });
+    //     toggle_dep_buttons();
+    // });
     
     // when you hover over a location's text, it will change the color
     // of the marker corresponding to it
-    $("#tr_" + id + " .task_str").hover(function() {
-        var marker = find_marker(id);
-        marker.prev = marker.path;
-        marker.path = MARKER_HOVER_PATH;
-        marker.setIcon(iconPath(marker.path, marker.letter));
-    }, function () {
-        var marker = find_marker(id);
-        marker.path = marker.prev;
-        marker.setIcon(iconPath(marker.path, marker.letter));
-    });
+    // NOT IMPLEMENTED IN BACKBONE
+    // $("#tr_" + id + " .task_str").hover(function() {
+    //     var marker = find_marker(id);
+    //     marker.prev = marker.path;
+    //     marker.path = MARKER_HOVER_PATH;
+    //     marker.setIcon(iconPath(marker.path, marker.letter));
+    // }, function () {
+    //     var marker = find_marker(id);
+    //     marker.path = marker.prev;
+    //     marker.setIcon(iconPath(marker.path, marker.letter));
+    // });
     
     // click listener for the 'x' buttons to remove this location 
-    $("#tr_" + id + " .delete_btn").click(function() {
-        var tr = $(this).parents("tr").remove();
-        var marker = find_marker(id);
-        marker.setMap(null);
-        waypoints = _.without(waypoints, marker);
-        zoomToFit();
-    });
+    // $("#tr_" + id + " .delete_btn").click(function() {
+    //     var tr = $(this).parents("tr").remove();
+    //     var marker = find_marker(id);
+    //     marker.setMap(null);
+    //     waypoints = _.without(waypoints, marker);
+    //     zoomToFit();
+    // });
     
     // click listn. to add all selected locations to _this_ location as 
     // dependencies, meaning that those must be done before _this_
-    $("#tr_" + id + " .dep_btn").click(function() {
-        var selected = $(".dep_selected");
-        var selected_ids = _.map(selected, function(el) {
-            return $(el).parents("tr").attr("id").substring(3);
-        });
+    // $("#tr_" + id + " .dep_btn").click(function() {
+    //     var selected = $(".dep_selected");
+    //     var selected_ids = _.map(selected, function(el) {
+    //         return $(el).parents("tr").attr("id").substring(3);
+    //     });
                 
-        if (deps[id] == undefined) {
-            deps[id] = selected_ids;
-        } else {
-            deps[id] = deps[id].concat(selected_ids);
-        }
+    //     if (deps[id] == undefined) {
+    //         deps[id] = selected_ids;
+    //     } else {
+    //         deps[id] = deps[id].concat(selected_ids);
+    //     }
                 
-        selected.each(function() {
-            $(this).removeClass("dep_selected");
-        });
+    //     selected.each(function() {
+    //         $(this).removeClass("dep_selected");
+    //     });
         
-        var names = selected.map(function(idx, el) {
-            return $(el).children("b").html();
-        });
+    //     var names = selected.map(function(idx, el) {
+    //         return $(el).children("b").html();
+    //     });
         
-        var html = "";
-        for (var i = 0; i < names.length; i++) {
-            html += "<tr id='trd_" + selected_ids[i] + "' class='dependency'><td></td><td><div>" + names[i] + "</div></td><td></td><td></td><td></td><td></td>" + x_btn + "</tr>";
-        }
+    //     var html = "";
+    //     for (var i = 0; i < names.length; i++) {
+    //         html += "<tr id='trd_" + selected_ids[i] + "' class='dependency'><td></td><td><div>" + names[i] + "</div></td><td></td><td></td><td></td><td></td>" + x_btn + "</tr>";
+    //     }
         
-        $("#tr_" + id).after(html);
+    //     $("#tr_" + id).after(html);
 
-        $(".dependency .delete_btn").click(function() {
-            var dep_id = $(this).parents("tr").attr("id").substring(4);
-            deps[id] = _.without(deps[id], dep_id);
-            $(this).parents("tr").remove();
-        });
+    //     $(".dependency .delete_btn").click(function() {
+    //         var dep_id = $(this).parents("tr").attr("id").substring(4);
+    //         deps[id] = _.without(deps[id], dep_id);
+    //         $(this).parents("tr").remove();
+    //     });
         
-        toggle_dep_buttons();
-    });
+    //     toggle_dep_buttons();
+    // });
 
     // double-click listn. that opens the input boxes to edit times
-    $(".time").dblclick(function() {
-        var edit_box = $(this).children(".edit");
-        edit_box.css("display", "block");
-        edit_box.focus();
-        edit_box.select();
-        $(this).children(".edit_view").hide();
-    });
+    // $(".time").dblclick(function() {
+    //     var edit_box = $(this).children(".edit");
+    //     edit_box.css("display", "block");
+    //     edit_box.focus();
+    //     edit_box.select();
+    //     $(this).children(".edit_view").hide();
+    // });
     
     // when an editing input box is open, if you unfocus the box, 
     // it will treat it as cancelling the edit and then close the box
-    $(".time .edit").blur(function() {
-        $(this).siblings(".edit_view").show();
-        $(this).hide();
-    });
+    // $(".time .edit").blur(function() {
+    //     $(this).siblings(".edit_view").show();
+    //     $(this).hide();
+    // });
     
     // save-on-enter mechanics for the edit input boxes
-    $(".time .edit").keypress(function(e) {
-        if (e.keyCode == 13) {
-            $(this).siblings(".edit_view").html($(this).val());
-            var loc_id = $(this).parents("tr").attr("id").substring(3);
-            console.log(loc_id);
-            var marker = find_marker(loc_id);
-            $(this).blur();
-        }
-    });
+    // $(".time .edit").keypress(function(e) {
+    //     if (e.keyCode == 13) {
+    //         $(this).siblings(".edit_view").html($(this).val());
+    //         var loc_id = $(this).parents("tr").attr("id").substring(3);
+    //         console.log(loc_id);
+    //         var marker = find_marker(loc_id);
+    //         $(this).blur();
+    //     }
+    // });
 
-    toggle_dep_buttons();
-}
+    // toggle_dep_buttons();
+// }
 
-function toggle_dep_buttons() {
-    // enable all dep btns that can have dependencies addded to depending 
-    // on which ones are selected
-    // (right now, only constraint is that you can't add itself as a dep)
-    var selected = $(".dep_selected");
-    if (selected.length == 0) {
-        $(".dep_btn").each(function() {
-            $(this).attr("disabled", "disabled");
-        });
-    } else {
-        $(".dep_btn").each(function() {
-            $(this).removeAttr("disabled");
-        });
+// function toggle_dep_buttons() {
+//     // enable all dep btns that can have dependencies addded to depending 
+//     // on which ones are selected
+//     // (right now, only constraint is that you can't add itself as a dep)
+//     var selected = $(".dep_selected");
+//     if (selected.length == 0) {
+//         $(".dep_btn").each(function() {
+//             $(this).attr("disabled", "disabled");
+//         });
+//     } else {
+//         $(".dep_btn").each(function() {
+//             $(this).removeAttr("disabled");
+//         });
         
-        // a location can't depend on itself so any selected location 
-        // isn't a valid option to add deps to
-        $(".dep_selected ~ td .dep_btn").each(function() {
-            $(this).attr("disabled", "disabled");
-        });
-    }
-}
+//         // a location can't depend on itself so any selected location 
+//         // isn't a valid option to add deps to
+//         $(".dep_selected ~ td .dep_btn").each(function() {
+//             $(this).attr("disabled", "disabled");
+//         });
+//     }
+// }
 
 function find_marker(id) {
     // return the marker in @waypoints with the given id
