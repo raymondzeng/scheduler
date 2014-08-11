@@ -71,16 +71,15 @@ table {
     background: grey;
 }
 
-#todo_list {
+#task_list {
     width: 70%;
     float: right;
     text-align: center;
     font-size: 16pt;
 }
 
-#adding_dep {
-    margin: 10px;
-    visibility: hidden;
+#task_list table {
+    margin-top: 50px;
 }
 
 .task_str {
@@ -111,7 +110,7 @@ table {
     height: 100%;
 }
 
-#todo_list input[type="text"] {
+#task_list input[type="text"] {
     height: 30px;
     font-size: 16pt;
 }

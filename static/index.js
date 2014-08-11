@@ -14,18 +14,181 @@ var deps = {};
 var NYC_LATLNG = null;
 var ZOOM_DEFAULT = 13;
 
-$(document).ready(function() {
-    _.templateSettings = {
-        interpolate: /\{\{(.+?)\}\}/g
-    };
+var Task, TaskList, TaskView, AppView;
+var Tasks, App;
+
+$(function() {    
+    Task = Backbone.Model.extend({
+        defaults: function() {
+            return {
+                name: "No Name",
+                address: "No Address",
+                letter: "-",
+                earliest: 0,
+                duration: 60,
+                latest: 2400,
+                selected: false,
+                dependencies: [],
+                canAdd: true,
+            };
+        },
+        
+        toggle: function() {
+            this.save({
+                selected: !this.get("selected"),
+                canAdd: !this.get("canAdd")
+            });
+        },
+    });
     
+    Dependency = Backbone.Model.extend({
+        defaults: function() {
+            return {
+                letter: "-",
+                name: "No Name"
+            };
+        }
+    });
+    
+    DependencyView = Backbone.View.extend({
+        tagName: "tr",
+        template: _.template($("#dep-template").html()),
+        
+        initialize: function() {
+            this.listenTo(this.model, 'change', this.render);
+            this.listenTo(this.model, 'destroy', this.remove);
+        },
+
+        render: function() {
+            this.$el.html(this.template(this.model.toJSON()));
+            return this;
+        }
+    });
+    
+    TaskList = Backbone.Collection.extend({
+        model: Task,
+        localStorage: new Backbone.LocalStorage("tasks"),
+        
+        selected: function() {
+            return this.where({selected: true});
+        },
+        
+        deselectAll: function() {
+            this.each(function(model) {
+                model.save({
+                    selected: false,
+                    canAdd: true
+                });
+            });
+        }
+        
+    });
+    
+    Tasks = new TaskList;
+
+    TaskView = Backbone.View.extend({
+        tagName: "tr",
+        template: _.template($("#task-template").html()),
+        
+        events: {
+            "click .task_str" : "toggleSelected",
+            "click .delete_btn" : "clear",
+            "click .dep_btn" : "addDeps"
+        },
+        
+        initialize: function() {
+            this.listenTo(this.model, 'change', this.render);
+            this.listenTo(this.model, 'destroy', this.remove);
+            var marker = this.model.get("marker");
+            if (marker) 
+                marker.setMap(map);
+        },
+
+        render: function() {
+            this.$el.html(this.template(this.model.toJSON()));
+            this.$el.children(".task_str").toggleClass('dep_selected', this.model.get('selected'));
+            this.$el.children("td").children(".dep_btn").prop("disabled", !this.model.get("canAdd"));
+            this.input = this.$('.edit');
+            
+            var taskView = this;
+            
+            var deps = this.model.get("dependencies");
+            _.each(deps, function(depView) {
+                taskView.$el.after(depView.render().el);
+            });
+            return this;
+        },
+        
+        toggleSelected: function() {
+            this.model.toggle();
+        },
+        
+        addDeps: function() {
+            var selected = Tasks.selected();
+            var depViews = _.map(selected, function(v) {
+                return new DependencyView({
+                    model: new Dependency({
+                        id: v.get("id"),
+                        name: v.get("name"),
+                        letter: v.get("letter")
+                    })
+                });
+            });
+            
+            var new_deps = this.model.get("dependencies").concat(depViews);
+            var deps_set = _.uniq(new_deps, function(item) {
+                // unique deps have unique ids
+                return item.model.get("id");
+            });
+            
+            this.model.save({dependencies: deps_set});
+            Tasks.deselectAll();
+        },
+        
+        clear: function() {
+            var marker = this.model.get("marker");
+            if (marker) {
+                waypoints = _.without(waypoints, marker);
+                marker.setMap(null);
+                zoomToFit();
+            }
+            this.model.destroy();
+        }
+    });
+
+    AppView = Backbone.View.extend({
+        
+        el: $("#task_list"),
+                
+        initialize: function() {
+            this.input = this.$("#searchTextField");
+            
+            this.listenTo(Tasks, 'add', this.addOne);
+            Tasks.fetch();
+
+            initGoogleMaps();
+            google.maps.event.addListener(searchBox, 'places_changed', this.handleNewTask);
+        },
+        
+        
+        addOne: function(task) {
+            var view = new TaskView({model: task});
+            this.$("#list").append(view.render().el);
+        },
+        
+        handleNewTask: function() {
+            onPlaceChanged();
+        }
+    });
+    
+    App = new AppView;
+
     $("#searchTextField").focus();
     $('#searchTextField').keypress(function (e) {
         if (e.which == 13) {
             e.preventDefault();
         }
     });    
-    initGoogleMaps();
 });
 
 
@@ -52,7 +215,7 @@ function initGoogleMaps() {
     searchBox.bindTo('bounds', map);
 
     // add a listener to when an item is selected from the list
-    google.maps.event.addListener(searchBox, 'places_changed', onPlaceChanged);
+  //  google.maps.event.addListener(searchBox, 'places_changed', onPlaceChanged);
     
     // create the directions display and attach it to the map
     directionsDisplay = new google.maps.DirectionsRenderer({
@@ -62,41 +225,81 @@ function initGoogleMaps() {
     directionsDisplay.setMap(map);
 }
 
+function nextMarkerLetter() {
+    if (waypoints.length != 0) {            
+        var lastLetterCode = _.last(waypoints).letter.charCodeAt(0);
+        var nextLetterCode = lastLetterCode;
+        
+        // we use '-' when we run out of letters
+        if (lastLetterCode != 45) {
+            nextLetterCode = lastLetterCode == 90 ? 0 : lastLetterCode + 1;
+        }            
+        return String.fromCharCode(nextLetterCode);
+    } else {
+        return "A";
+    }
+}
+
+function resolveHours(hours) {
+    // figure out when the place opens/closes, and default duration is 1 hour
+    // user can later edit these
+    var earliest, latest;
+    
+    if (hours == undefined) {
+        earliest = 0;
+        latest = 2400;
+    } else {
+        // Sun = 0, Sat = 6; same as Google Maps
+        var todays_weekday = new Date().getDay();
+
+        var close_open = hours.periods[todays_weekday];
+
+        // TODO : somethings (Central Park) are open from 6am to 1am. deal with this
+        earliest = close_open['open']['hours'] * 100 + close_open['open']['minutes'];
+        latest = close_open['close']['hours'] * 100 + close_open['close']['minutes'];
+    }
+    
+    return {
+        earliest: earliest,
+        latest: latest
+    };
+}
+
 function onPlaceChanged() {
-    var place = searchBox.getPlaces();
-    if (place[0].geometry) {
-        if (_.find(waypoints, function(n) {return n.id == place[0].place_id;})) {
+    var places = searchBox.getPlaces();
+    if (places[0].geometry) {
+        var place = places[0];
+        if (_.find(waypoints, function(n) {return n.id == place.place_id;})) {
             console.log("already added");
             return;
         }
 
-        map.panTo(place[0].geometry.location);
+        map.panTo(place.geometry.location);
         
-        var markerLetter = "A";
-        if (waypoints.length != 0) {            
-            var lastLetterCode = _.last(waypoints).letter.charCodeAt(0);
-            var nextLetterCode = lastLetterCode;
-            
-            // we use '-' when we run out of letters
-            if (lastLetterCode != 45) {
-                nextLetterCode = lastLetterCode == 90 ? 0 : lastLetterCode + 1;
-            }            
-            markerLetter = String.fromCharCode(nextLetterCode);
-        }
-
+        var markerLetter = nextMarkerLetter();
         var markerIcon = iconPath(MARKER_PATH, markerLetter);
-        
-        // Use marker animation to drop the icons incrementally on the map.
         marker = new google.maps.Marker({
-            position: place[0].geometry.location,
+            position: place.geometry.location,
             animation: google.maps.Animation.DROP,
             icon: markerIcon,
-            id: place[0].place_id,
+            id: place.place_id,
             path: MARKER_PATH,
             prev: MARKER_PATH,
             letter: markerLetter
         });
         
+        var hour_range = resolveHours(place.opening_hours);
+
+        Tasks.create({
+            id: place.place_id,
+            name: place.name,
+            letter: markerLetter,
+            address: place.formatted_address,
+            earliest: hour_range.earliest,
+            latest: hour_range.latest,
+            marker: marker
+        });
+
         // clicking on a marker selects the corresponding item in list
         google.maps.event.addListener(marker, 'click', function() {
             $("#tr_" + this.id + " .task_str").click();
@@ -112,18 +315,14 @@ function onPlaceChanged() {
 
         marker.setMap(map);
         waypoints.push(marker);
-        
-        add_item(marker.id,
-                 place[0].name, 
-                 place[0].formatted_address,
-                 place[0].opening_hours);
-        
+                
         zoomToFit();
     }
 }
 
 function zoomToFit() { 
     if (waypoints.length == 0) {
+        console.log("hello");
         map.panTo(NYC_LATLNG);
         map.setZoom(ZOOM_DEFAULT);
         return;
@@ -153,33 +352,7 @@ function smallestBound() {
 // UI 
 
 // hours can be undefined; if it is, we actually want hours.periods
-function add_item(id, name, addr, hours) {
-    // figure out when the place opens/closes, and default duration is 1 hour
-    // user can later edit these
-    var earliest, duration, latest;
-    duration = 1;
-    
-    if (hours == undefined) {
-        earliest = 0;
-        latest = 2400;
-    } else {
-        // Sun = 0, Sat = 6; same as Google Maps
-        var todays_weekday = new Date().getDay();
-
-        var close_open = hours.periods[todays_weekday];
-
-        // TODO : somethings (Central Park) are open from 6am to 1am. deal with this
-        earliest = close_open['open']['hours'] * 100 + close_open['open']['minutes'];
-        latest = close_open['close']['hours'] * 100 + close_open['close']['minutes'];
-    }
-    
-    var marker = find_marker(id);
-    marker.hours = { 
-        "earliest" : earliest,
-        "duration" : duration,
-        "latest" : latest
-    };
-
+function add_item(id, name, addr, hours) {    
     // create the html <tr> element for this location
     var row_id = '<td>' + marker.letter + '</td>';
     var task_str = '<td class="task_str"><b>' + id + '</b> <address>' + addr + '</address></td>';
@@ -297,7 +470,6 @@ function add_item(id, name, addr, hours) {
             var loc_id = $(this).parents("tr").attr("id").substring(3);
             console.log(loc_id);
             var marker = find_marker(loc_id);
-            marker.hours[$(this).attr("which")] = parseInt($(this).val());
             $(this).blur();
         }
     });
