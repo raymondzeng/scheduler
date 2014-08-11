@@ -23,6 +23,38 @@
       
       <table id="list">
         <tbody>
+          <script type="text/template" id="task-template">
+            <td> {{ letter }} </td>
+            <td class="task_str">
+              <b> {{ name }} </b>
+              <b> {{ id }} </b>
+              <address> {{ address }} </address>
+            </td>
+            <td class="time">
+              <div class="edit_view">
+                {{ earliest }}
+              </div>
+              <inpute type="text" class="edit" value="{{ earliest }}" which="earliest">
+            </td>
+            <td class="time">
+              <div class="edit_view">
+                {{ duration }}
+              </div>
+              <inpute type="text" class="edit" value="{{ duration }}" which="duration">
+            </td>
+            <td class="time">
+              <div class="edit_view">
+                {{ latest }}
+              </div>
+              <inpute type="text" class="edit" value="{{ latest }}" which="latest">
+            </td>
+            <td>
+              <input type="button" class="button dep_btn" value="+" disabled>
+            </td>
+            <td>
+              <input type="button" class="button delete_btn" value="x">
+            </td>
+          </script>
         </tbody>
       </table>
       

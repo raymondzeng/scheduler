@@ -15,6 +15,10 @@ var NYC_LATLNG = null;
 var ZOOM_DEFAULT = 13;
 
 $(document).ready(function() {
+    _.templateSettings = {
+        interpolate: /\{\{(.+?)\}\}/g
+    };
+    
     $("#searchTextField").focus();
     $('#searchTextField').keypress(function (e) {
         if (e.which == 13) {
