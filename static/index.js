@@ -24,9 +24,12 @@ $(function() {
                 duration: 60,
                 latest: 2400,
                 selected: false,
-                dependencies: [],
                 canAdd: true,
             };
+        },
+        
+        initialize: function() {
+            this.dependencies = new DependencyList;
         },
         
         toggle: function() {
@@ -50,6 +53,10 @@ $(function() {
         tagName: "tr",
         template: _.template($("#dep-template").html()),
         
+        events: {
+            "click .delete_btn" : "clear"
+        },
+        
         initialize: function() {
             this.listenTo(this.model, 'change', this.render);
             this.listenTo(this.model, 'destroy', this.remove);
@@ -58,7 +65,16 @@ $(function() {
         render: function() {
             this.$el.html(this.template(this.model.toJSON()));
             return this;
+        },
+
+        clear: function() {
+            this.model.destroy();
         }
+    });
+        
+    DependencyList = Backbone.Collection.extend({
+        model: Dependency,
+        localStorage: new Backbone.LocalStorage("tasks-dependencies")
     });
     
     TaskList = Backbone.Collection.extend({
@@ -77,7 +93,6 @@ $(function() {
                 });
             });
         }
-        
     });
     
     Tasks = new TaskList;
@@ -96,11 +111,17 @@ $(function() {
         },
         
         initialize: function() {
+            this.depViews = [];
             this.listenTo(this.model, 'change', this.render);
             this.listenTo(this.model, 'destroy', this.remove);
             var marker = this.model.get("marker");
             if (marker) 
                 marker.setMap(map);
+            
+            _.bindAll(this, 'render');
+            this.model.dependencies.bind('reset', this.render);
+            this.model.dependencies.bind('add', this.render);
+            this.model.dependencies.bind('remove', this.render);
         },
 
         render: function() {
@@ -108,12 +129,21 @@ $(function() {
             this.displaySelected();
             this.$el.children("td").children(".dep_btn").prop("disabled", !this.model.get("canAdd"));
             
-            var taskView = this;
+            _.each(this.depViews, function(view) {
+                view.remove();
+            });
+
+            var depCollection = this.model.dependencies;
             
-            var deps = this.model.get("dependencies");
-            _.each(deps, function(depView) {
+            var taskView = this;
+            depCollection.each(function(model) {
+                var depView = new DependencyView({
+                    model: model
+                });
+                taskView.depViews = taskView.depViews.concat([depView]);
                 taskView.$el.after(depView.render().el);
             });
+
             return this;
         },
         
@@ -123,23 +153,15 @@ $(function() {
         
         addDeps: function() {
             var selected = Tasks.selected();
-            var depViews = _.map(selected, function(v) {
-                return new DependencyView({
-                    model: new Dependency({
-                        id: v.get("id"),
-                        name: v.get("name"),
-                        letter: v.get("letter")
-                    })
+            var taskView = this;
+            var depViews = _.each(selected, function(v) {
+                taskView.model.dependencies.create({
+                    id: v.get("id"),
+                    name: v.get("name"),
+                    letter: v.get("letter")
                 });
             });
             
-            var new_deps = this.model.get("dependencies").concat(depViews);
-            var deps_set = _.uniq(new_deps, function(item) {
-                // unique deps have unique ids
-                return item.model.get("id");
-            });
-            
-            this.model.save({dependencies: deps_set});
             Tasks.deselectAll();
         },
         
@@ -169,6 +191,11 @@ $(function() {
                 marker.setMap(null);
                 zoomToFit();
             }
+            
+            this.model.dependencies.each(function(model) {
+                model.destroy();
+            });
+            
             this.model.destroy();
         },
         
@@ -222,7 +249,6 @@ $(function() {
         }
     });    
 });
-
 
 
 // Google Maps
@@ -416,9 +442,7 @@ function find_marker(id) {
 // submit to server
 function submitTasks() {
     console.log("submit");
-    // each marker in waypoints should have properties 
-    // 'id', 'hours', and 'position'
-    
+
     // create list of task ids
     ids = waypoints.map(function(m) {
         return m.id
@@ -433,15 +457,15 @@ function submitTasks() {
         hours[waypoints[i].id] = allToMinutes(Tasks.get(waypoints[i].id));
     }
 
-    // TOOOO DOOOOOOO <-------
-
     deps = {};
-    // for every unique pair of nodes, if we don't already have the distance info,
-    // call Google Maps API to get it
-    // and when we have all distance info, submit all data (distance, hours, user_prefs) to server
-    if (maybe_submit()) 
-        return;
+    Tasks.each(function(task) {
+        deps[task.get("id")] = task.dependencies.map(function(dep) {
+            return dep.get("id");
+        });
+    });
 
+    // for every unique pair of nodes, if we don't already have the distance info, call Google Maps API to get it
+    var reqs_to_get = [];
     for (var i = 0; i < waypoints.length; i++) {
         for (var j = i + 1; j < waypoints.length; j++) {
             var key = waypoints[i].id + "," + waypoints[j].id
@@ -450,65 +474,76 @@ function submitTasks() {
             if (distances[key] != undefined)
                 continue
 
-            var request = {
-                origin: waypoints[i].position,
-                destination: waypoints[j].position,
-                travelMode: google.maps.TravelMode.DRIVING
+            var to_get = {
+                key: key,
+                request: {
+                    origin: waypoints[i].position,
+                    destination: waypoints[j].position,
+                    travelMode: google.maps.TravelMode.DRIVING
+                }
             };
             
-            directionsService.route(request, distanceCallback(i,j));
+            reqs_to_get.push(to_get);
         }
     }
+    
+    deferreds = [];
+    _.each(reqs_to_get, function(to_get) {
+        var def = $.Deferred();
+        def.key = to_get.key;
+        deferreds.push(calcDistance(to_get, def));
+    });
+
+    // once we have everything, submit to server
+    $.when.apply($, deferreds).done(function() {
+        submit();
+    });
 }
 
-function distanceCallback(i, j) {
-    return function(response, status) {
-        if (status == google.maps.DirectionsStatus.OK) {
-            
-            var key = waypoints[i].id + "," + waypoints[j].id
-            
-            directions[key] = response;
-            //directionsDisplay.setDirections(response);
-            var distance = response.routes[0].legs[0].distance;
-            distances[key] = distance;
-            maybe_submit();
-        } else { // status is not OK
-            console.log(status);
+function calcDistance(to_get, defer) {
+    console.log("fetching dist");
+    directionsService.route(to_get.request, function(response, status) {
+        if (status == google.maps.DirectionsStatus.OK) {    
+            directions[defer.key] = response;
+            distances[defer.key] =  response.routes[0].legs[0].distance;
+            defer.resolve(response);
+        } else {
+            defer.reject(status);
         }
-    };
+    });
+    return defer;
 }
 
-function maybe_submit() {
+function submit() {
+    console.log("submitting");
+
     // there will always be (n choose 2) unordered pairs of nodes
     // where n is the number of waypoints
-    if (_.size(distances) === choose(waypoints.length, 2)) {
-        $.ajax({
-            type : "POST",
-            url : "/submit",
-            data: JSON.stringify({
-                "ids" : ids,
-                "distances" : distances,
-                "hours" : hours,
-                "dependencies" : deps
-            }),
-            contentType: 'application/json; charset=UTF-8',
-            success: function(data) {
-                var sched = data["schedule"];
-                var legs = [];
-                for (var i = 0; i < sched.length - 1; i++) {
-                    var leg = find_directions(sched[i], sched[i+1]);
-                    legs.push(leg);
-                }
-
-                var combined = combine_directions(legs);
-
-                directionsDisplay.setDirections(combined);
+    console.log(_.size(distances) >= choose(waypoints.length, 2));
+    $.ajax({
+        type : "POST",
+        url : "/submit",
+        data: JSON.stringify({
+            "ids" : ids,
+            "distances" : distances,
+            "hours" : hours,
+            "dependencies" : deps
+        }),
+        contentType: 'application/json; charset=UTF-8',
+        success: function(data) {
+            console.log("got response");
+            var sched = data["schedule"];
+            var legs = [];
+            for (var i = 0; i < sched.length - 1; i++) {
+                var leg = find_directions(sched[i], sched[i+1]);
+                legs.push(leg);
             }
-        });
-        return true;
-    } else {
-        return false;
-    }
+
+            var combined = combine_directions(legs);
+
+            directionsDisplay.setDirections(combined);
+        }
+    });
 }
 
 // Utils
@@ -542,10 +577,11 @@ function combine_directions(legs) {
 }
 
 function allToMinutes(taskModel) {
-    // DEPRECATED INPUT; INPUT has changed
-    // Input : {"earliest" : xxyy,
-    //          "duration" : m,
-    //          "latest"   : xxyy }
+    // Input : a Task model
+    //
+    //         model.get("earliest") -> xxyy
+    //         model.get("duration") -> m
+    //         model.get("latest") -> xxyy
     //         
     //     xxyy is an int and xx represents the hour and yy the minutes
     //          on a 24-hour clock, so 22:30 is 10:30 PM
