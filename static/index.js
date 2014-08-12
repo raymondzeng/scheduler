@@ -63,6 +63,7 @@ $(function() {
         },
 
         render: function() {
+            this.$el.attr("class", "dependency");
             this.$el.html(this.template(this.model.toJSON()));
             return this;
         },
@@ -242,12 +243,18 @@ $(function() {
     
     App = new AppView;
 
-    $("#searchTextField").focus();
     $('#searchTextField').keypress(function (e) {
         if (e.which == 13) {
             e.preventDefault();
         }
     });    
+    $("#go a").click(function() {
+        $("#landing").slideUp();
+        $("#app").show();
+        google.maps.event.trigger(map, 'resize');
+        $("html").css("background", "white");
+        $("#searchTextField").focus();
+    });
 });
 
 
