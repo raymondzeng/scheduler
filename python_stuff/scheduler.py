@@ -15,7 +15,7 @@ def process_then_run(ids, hours, distances, deps):
     
     # times_dict is complete (every task has a value for (available, duration, closing) times
     
-    times_dict = process_times(ids, hours)
+    times_dict = hours #process_times(ids, hours)
   
     print "times", times_dict
     edge_weights = process_distances(distances)
@@ -81,7 +81,7 @@ def process_distances(distances):
     dist_dict = {}
     for from_to, distance in distances.items():
         from_id, to_id = from_to.split(',')
-        dist_dict[(from_id, to_id)] = distance['value']
+        dist_dict[(from_id, to_id)] = distance
 
     return dist_dict
 
@@ -155,7 +155,9 @@ def shortest_path(tasks, dists, scheds):
         if shortest is None or dist < shortest_dist:
             shortest_dist = dist
             shortest = sched
+        print "yum => ", dist, sched
         
+    print shortest_dist, shortest
     return (shortest_dist, shortest)
 
 def get_dist(dists, a, b):

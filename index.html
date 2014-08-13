@@ -1,5 +1,6 @@
 <html>
   <head>
+    <!-- <script data-main="static/config" src="static/vendor/require.js"></script> -->
     <link href="static/index.css" rel="stylesheet"/>
   </head>
   <body>
@@ -9,10 +10,10 @@
           <h1>Scheduler</h1>
           <p>Traveling Salesman Solver with additional time and dependency constraints</p>
           
-          <img src="static/ano.png">
+          <img src="static/img/ano.png">
         </div>
         <div id="go">
-          <a><img src="static/right_arrow.png"></a>
+          <a><img src="static/img/right_arrow.png"></a>
         </div>
       </div>
     </div>
@@ -23,23 +24,22 @@
       </div>
       
       <div id="task_list"> 
-        <input id="searchTextField" type="text" size="50" placeholder="Enter an address or POI">
+        <input id="searchTextField" type="text" size="50" placeholder="Enter an address or POI"><a><img src="static/img/black_chevron_circle.png"></a>
+
 
         <table id="list">
         </table>
         
-        <input id="submit_btn" type="button" class="button" value="Figure it out" onclick="submitTasks()">
+        <input id="submit_btn" type="button" class="button" value="GO" onclick="submitTasks(true)">
       </div>
     </div>
-    
-    
 
     <script type="text/template" id="task-template">
       <td> <%- letter %> </td>
       <td class="task_str">
         <b> <%- name %> </b>
-        <!-- <br> -->
-        <!-- <b> <%- id %> </b> -->
+        <br>
+        <b> <%- id %> </b>
         <address> <%- address %> </address>
       </td>
       <td class="time">
@@ -80,10 +80,10 @@
       </td>
     </script>
     
-      <script src="//ajax.googleapis.com/ajax/libs/jquery/1.11.1/jquery.min.js"></script>
-    <script src="//cdnjs.cloudflare.com/ajax/libs/underscore.js/1.6.0/underscore-min.js"></script>
-    <script src="//cdnjs.cloudflare.com/ajax/libs/backbone.js/1.1.2/backbone-min.js"></script>
-    <script src="//cdnjs.cloudflare.com/ajax/libs/backbone-localstorage.js/1.1.9/backbone.localStorage-min.js"></script>
+    <script src="http://ajax.googleapis.com/ajax/libs/jquery/1.11.1/jquery.min.js"></script>
+    <script src="http://cdnjs.cloudflare.com/ajax/libs/underscore.js/1.6.0/underscore-min.js"></script>
+    <script src="http://cdnjs.cloudflare.com/ajax/libs/backbone.js/1.1.2/backbone-min.js"></script>
+    <script src="http://cdnjs.cloudflare.com/ajax/libs/backbone-localstorage.js/1.1.9/backbone.localStorage-min.js"></script>
     <script src="static/index.js"></script>
     <script type="text/javascript" src="http://maps.googleapis.com/maps/api/js?libraries=places"></script>
     <link href="http://fonts.googleapis.com/css?family=Lato:300,400" rel="stylesheet" type="text/css">

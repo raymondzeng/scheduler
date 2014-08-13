@@ -2,9 +2,9 @@ var map;
 var placesService, directionsService;
 var searchBox;
 var waypoints = [];
-var MARKER_PATH = 'https://maps.gstatic.com/intl/en_us/mapfiles/marker_green';
-var MARKER_HOVER_PATH = 'https://maps.gstatic.com/intl/en_us/mapfiles/marker';
-var MARKER_SELECTED_PATH = 'https://maps.gstatic.com/intl/en_us/mapfiles/marker_orange';
+var MARKER_PATH = 'http://maps.gstatic.com/intl/en_us/mapfiles/marker_green';
+var MARKER_HOVER_PATH = 'http://maps.gstatic.com/intl/en_us/mapfiles/marker';
+var MARKER_SELECTED_PATH = 'http://maps.gstatic.com/intl/en_us/mapfiles/marker_orange';
 var directions = {};
 var distances = {};
 var NYC_LATLNG = null;
@@ -255,6 +255,13 @@ $(function() {
         $("html").css("background", "white");
         $("#searchTextField").focus();
     });
+    
+    $("#app a").click(function() {
+        $("#landing").slideDown();
+        $("#app").hide();
+        $("html").css("background", 'url("static/img/map.png")');
+    });
+    
 });
 
 
@@ -447,7 +454,7 @@ function find_marker(id) {
 
 
 // submit to server
-function submitTasks() {
+function submitTasks(local) {
     console.log("submit");
 
     // create list of task ids
@@ -501,10 +508,17 @@ function submitTasks() {
         deferreds.push(calcDistance(to_get, def));
     });
 
-    // once we have everything, submit to server
-    $.when.apply($, deferreds).done(function() {
-        submit();
-    });
+    if (local) {
+        // once we have everything, submit to server
+        $.when.apply($, deferreds).done(function() {
+            local_submit();
+        });
+    } else {
+        // once we have everything, submit to server
+        $.when.apply($, deferreds).done(function() {
+            submit();
+        });
+    }
 }
 
 function calcDistance(to_get, defer) {
@@ -512,7 +526,7 @@ function calcDistance(to_get, defer) {
     directionsService.route(to_get.request, function(response, status) {
         if (status == google.maps.DirectionsStatus.OK) {    
             directions[defer.key] = response;
-            distances[defer.key] =  response.routes[0].legs[0].distance;
+            distances[defer.key] =  response.routes[0].legs[0].distance.value;
             defer.resolve(response);
         } else {
             defer.reject(status);
@@ -526,7 +540,7 @@ function submit() {
 
     // there will always be (n choose 2) unordered pairs of nodes
     // where n is the number of waypoints
-    console.log(_.size(distances) >= choose(waypoints.length, 2));
+    // console.log(_.size(distances) >= choose(waypoints.length, 2));
     $.ajax({
         type : "POST",
         url : "/submit",
@@ -537,20 +551,27 @@ function submit() {
             "dependencies" : deps
         }),
         contentType: 'application/json; charset=UTF-8',
-        success: function(data) {
-            console.log("got response");
-            var sched = data["schedule"];
-            var legs = [];
-            for (var i = 0; i < sched.length - 1; i++) {
-                var leg = find_directions(sched[i], sched[i+1]);
-                legs.push(leg);
-            }
-
-            var combined = combine_directions(legs);
-
-            directionsDisplay.setDirections(combined);
-        }
+        success: renderTSPRoute
     });
+}
+
+function local_submit() {
+    var data = find_itinerary(hours, distances, deps);
+    renderTSPRoute(data);
+}
+
+function renderTSPRoute(data) {
+    console.log("got response");
+    var sched = data["schedule"];
+    var legs = [];
+    for (var i = 0; i < sched.length - 1; i++) {
+        var leg = find_directions(sched[i], sched[i+1]);
+        legs.push(leg);
+    }
+
+    var combined = combine_directions(legs);
+
+    directionsDisplay.setDirections(combined);
 }
 
 // Utils
@@ -610,9 +631,176 @@ function allToMinutes(taskModel) {
     var l_min = (latest % 100);
     latest = l_hour * 60 + l_min;
     
+    // return {
+    //     "earliest" : earliest,
+    //     "duration" : taskModel.get("duration"),
+    //     "latest" : latest
+    // };
+    return [earliest, taskModel.get("duration"), latest];
+}
+
+
+
+
+
+
+
+function valid(e, deps, visited) {
+    // """
+    // Returns if e's dependencies have all been visited already
+    // """
+    for (var i = 0; i < deps[e].length; i++) {
+        if (!visited[deps[e][i]])
+            return false;
+    }
+    return true;
+}
+            
+function topsort_dfs(nodes, deps, visited, solutions, path) {
+    if (path.length == _.size(nodes)) {
+        solutions.push(path);
+    }
+
+    _.each(Object.keys(nodes), function(key) {
+        if (!visited[key]) {
+            if (valid(key, deps, visited)) {
+                var v = _.clone(visited);
+                v[key] = true;
+                var p = _.clone(path);
+                p.push(key);
+                topsort_dfs(nodes, deps, v, solutions, p);
+            }
+        }
+    });
+}
+
+function topsort(nodes, deps) {
+    var visited = {};
+    
+    _.each(Object.keys(nodes), function(key) {
+        visited[key] = false;
+    });
+    
+    var solutions = [];
+    topsort_dfs(nodes, deps, visited, solutions, []);
+    return solutions;
+}
+
+function find_itinerary(tasks, distances, deps) {
+    var valid_scheds = valid_schedules(tasks, deps);
+    return shortest_path(tasks, distances, valid_scheds);
+}
+
+function valid_schedules(tasks, deps) {
+    // """
+    // Returns a list of valid orderings based on dependencies and time constraints
+
+    // Can assume that for every task, deadline - available >= duration
+    // """
+    // just to print out some stats
+    var valids = 0
+    var failed = 0
+
+    // each schedule is a list of task_ids
+    var schedules = topsort(tasks, deps);
+    var result = [];
+    
+    _.each(schedules, function(schedule) {
+        var time_now = 0;
+
+        var failed_flag = false;
+        for (var i = 0; i < schedule.length; i++) {
+            var task_id = schedule[i];
+            var available = tasks[task_id][0];
+            var duration = tasks[task_id][1];
+            var deadline = tasks[task_id][2];
+            
+            if (deadline < time_now + duration) {
+                failed += 1;
+                failed_flag = true;
+                break;
+            } else {
+                time_now = available + duration;
+            }
+        }
+        
+        // if for loop didn't break out 
+        if (!failed_flag) {
+            valids += 1;
+            result.push(schedule)
+        }
+    });
+    console.log("time constraints => failed: " + failed + "success: " + valids);
+    return result;
+}
+            
+function shortest_path(tasks, dists, scheds) {
+    // """
+    // tasks : dictionary of { id: (available, duration, deadline) }
+    // dists : dictionary of { (from_id, to_id) : distance }
+    // scheds : list of schedules where a schedule is a list of task ids
+    // """
+    var shortest_dist = -1;
+    var shortest = null;
+    _.each(scheds, function(sched) {
+        var dist = 0;
+        
+        for (var i = 0; i < sched.length -1; i++) {
+            var a = sched[i];
+            var b = sched[i + 1];
+            console.log("get: " + get_dist(dists, a, b));
+            dist += get_dist(dists, a, b);
+        }
+        
+        console.log(dist);
+
+        if (shortest == null || dist < shortest_dist) {
+            shortest_dist = dist;
+            shortest = sched;
+        }
+        console.log("yum: " + dist + " " + shortest);
+    });
+    
     return {
-        "earliest" : earliest,
-        "duration" : taskModel.get("duration"),
-        "latest" : latest
+        "distance" : shortest_dist, 
+        "schedule" : shortest
     };
 }
+
+function get_dist(dists, a, b) {
+    // """ 
+    // dists is a dictionary where keys are tuples of (from_id, to_id) and the values are the distance from from_id to to_id. 
+
+    // This function returns the value with key (a,b) or (b,a) since they are the same distance.
+
+    // We need this function so we don't need to duplicate the dictionary with both keys (a,b) and (b,a)
+    
+    // Will still throw an error if neither key exist
+    // """
+    var dist = dists[a + "," + b];
+    
+    if (dist == undefined)
+        return dists[b + "," + a];
+    return dist;
+}
+
+
+// tests: passed
+// var tasks = { "1": [10, 2, 24],
+//           "2": [11, 1, 14],
+//           "3": [13, 1, 15],
+//           "4": [14, 4, 18] }
+
+// var distances = { "1,2": 10,
+//               "1,3" : 12,
+//               "1,4" : 10,
+//               "2,3" : 5,
+//               "2,4" : 19,
+//               "3,4" : 16 }
+
+// var deps = { "1": [],
+//          "2": ["1"],
+//          "3": [],
+//          "4": ["3"] }
+
+// console.log(find_itinerary(tasks, distances, deps));
