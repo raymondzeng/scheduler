@@ -6,6 +6,7 @@ require.config({
         'backbone-localStorage': 'http://cdnjs.cloudflare.com/ajax/libs/backbone-localstorage.js/1.1.9/backbone.localStorage-min',
         
         'gmaps' : 'lib/gmaps',
+        'heap' : 'lib/heap',
         'templates' : '../templates'
     },
 

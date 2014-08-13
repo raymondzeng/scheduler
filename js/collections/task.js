@@ -1,7 +1,7 @@
 define([
     'backbone',
     'backbone-localStorage',
-    'views/task'
+    'models/task'
 ], function(Backbone, LocalStorage, Task) {
     var TaskList = Backbone.Collection.extend({
         model: Task,

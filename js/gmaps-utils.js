@@ -2,15 +2,15 @@ define([
     'jquery',
     'underscore',
     'gmaps',
-    'collections/task'
-], function($, _, GoogleMaps, Tasks) {
+    'tsp',
+], function($, _, GoogleMaps, Tsp) {
     var map;
     var placesService, directionsService;
     var searchBox;
     var waypoints = [];
-    var MARKER_PATH = 'http://maps.gstatic.com/intl/en_us/mapfiles/marker_green';
-    var MARKER_HOVER_PATH = 'http://maps.gstatic.com/intl/en_us/mapfiles/marker';
-    var MARKER_SELECTED_PATH = 'http://maps.gstatic.com/intl/en_us/mapfiles/marker_orange';
+    var M_G = 'http://maps.gstatic.com/intl/en_us/mapfiles/marker_green';
+    var M_R = 'http://maps.gstatic.com/intl/en_us/mapfiles/marker';
+    var M_O = 'http://maps.gstatic.com/intl/en_us/mapfiles/marker_orange';
     var directions = {};
     var distances = {};
     var NYC_LATLNG = null;
@@ -47,8 +47,6 @@ define([
         });
 
         directionsDisplay.setMap(map);
-        
-        console.log(tasks);
     }
 
     function nextMarkerLetter() {
@@ -67,7 +65,8 @@ define([
     }
 
     function resolveHours(hours) {
-        // figure out when the place opens/closes, and default duration is 1 hour
+        // figure out when the place opens/closes, 
+        // and default duration is 1 hour
         // user can later edit these
         var earliest, latest;
         
@@ -80,7 +79,8 @@ define([
 
             var close_open = hours.periods[todays_weekday];
 
-            // TODO : some things (Central Park) are open from 6am to 1am. deal with this; it breaks the guarantee that latest > earliest
+            // TODO : some things (Central Park) are open from 6am to 1am. 
+            // it breaks the guarantee that latest > earliest
             earliest = close_open['open']['hours'] * 100 
                 + close_open['open']['minutes'];
             latest = close_open['close']['hours'] * 100 
@@ -94,9 +94,8 @@ define([
     }
 
     function onPlaceChanged(tasks) {
-        console.log(searchBox);
         var places = searchBox.getPlaces();
-        if (places[0].geometry) {
+        if (places && places[0].geometry) {
             var place = places[0];
 
             if (_.find(waypoints, function(n) {
@@ -109,21 +108,19 @@ define([
             map.panTo(place.geometry.location);
             
             var markerLetter = nextMarkerLetter();
-            var markerIcon = iconPath(MARKER_PATH, markerLetter);
+            var markerIcon = iconPath(M_G, markerLetter);
             marker = new GoogleMaps.Marker({
                 position: place.geometry.location,
                 animation: GoogleMaps.Animation.DROP,
                 icon: markerIcon,
                 id: place.place_id,
-                path: MARKER_PATH,
-                prev: MARKER_PATH,
+                path: M_G,
+                prev: M_G,
                 letter: markerLetter
             });
             
             var hour_range = resolveHours(place.opening_hours);
 
-            console.log(Tasks);
-            console.log("want to create");
             tasks.create({
                 id: place.place_id,
                 name: place.name,
@@ -133,21 +130,6 @@ define([
                 latest: hour_range.latest,
                 marker: marker
             });
-
-            console.log("failed");
-            // FOLLOWING THREE NEED TO BE IMPLEMENTED W/ BACKBONE
-            // clicking on a marker selects the corresponding item in list
-            // GoogleMaps.event.addListener(marker, 'click', function() {
-            //     $("#tr_" + this.id + " .task_str").click();
-            // });
-
-            // // hovering over a marker temp. highlights the item in list
-            // GoogleMaps.event.addListener(marker, 'mouseover', function() {
-            //     $("#tr_" + this.id + " .task_str").prev().addClass("dep_hovered");
-            // });
-            // GoogleMaps.event.addListener(marker, 'mouseout', function() {
-            //     $("#tr_" + this.id + " .task_str").prev().removeClass("dep_hovered");
-            // });
 
             marker.setMap(map);
             waypoints.push(marker);
@@ -182,20 +164,6 @@ define([
         return bounds;
     }
 
-    // when you hover over a location's text, it will change the color
-    // of the marker corresponding to it
-    // NOT IMPLEMENTED IN BACKBONE
-    // $("#tr_" + id + " .task_str").hover(function() {
-    //     var marker = find_marker(id);
-    //     marker.prev = marker.path;
-    //     marker.path = MARKER_HOVER_PATH;
-    //     marker.setIcon(iconPath(marker.path, marker.letter));
-    // }, function () {
-    //     var marker = find_marker(id);
-    //     marker.path = marker.prev;
-    //     marker.setIcon(iconPath(marker.path, marker.letter));
-    // });
-
     function find_marker(id) {
         // return the marker in @waypoints with the given id
         // returns null if not found
@@ -208,8 +176,13 @@ define([
         return null;
     }
 
-    // submit to server
-    function submitTasks(local) {
+    function removeMarker(marker) {
+        waypoints = _.without(waypoints, marker);
+        marker.setMap(null);
+        zoomToFit();
+    }
+    
+    function solveTsp(Tasks) {
         console.log("submit");
 
         // create list of task ids
@@ -218,7 +191,8 @@ define([
         });
         
         // create a dict of id : periods
-        // periods is an array of opening periods covering seven days, starting from Sunday, in chronological order.
+        // periods is an array of opening periods covering seven days, 
+        // starting from Sunday, in chronological order.
         // https://developers.google.com/maps/documentation/javascript/places#place_details_responses
         // periods can be undefined
         hours = {};
@@ -233,7 +207,8 @@ define([
             });
         });
 
-        // for every unique pair of nodes, if we don't already have the distance info, call Google Maps API to get it
+        // for every unique pair of nodes, if we don't already 
+        // have the distance info, call Google Maps API to get it
         var reqs_to_get = [];
         for (var i = 0; i < waypoints.length; i++) {
             for (var j = i + 1; j < waypoints.length; j++) {
@@ -248,7 +223,7 @@ define([
                     request: {
                         origin: waypoints[i].position,
                         destination: waypoints[j].position,
-                        travelMode: GoogleMaps.TravelMode.DRIVING
+                        travelMode: GoogleMaps.TravelMode.WALKING
                     }
                 };
                 
@@ -263,17 +238,11 @@ define([
             deferreds.push(calcDistance(to_get, def));
         });
 
-        if (local) {
-            // once we have everything, submit to server
-            $.when.apply($, deferreds).done(function() {
-                local_submit();
-            });
-        } else {
-            // once we have everything, submit to server
-            $.when.apply($, deferreds).done(function() {
-                submit();
-            });
-        }
+        // once we have everything, solve 
+        $.when.apply($, deferreds).done(function() {
+            console.log("done solving");
+            local_solve();
+        });
     }
 
     function calcDistance(to_get, defer) {
@@ -284,40 +253,27 @@ define([
                 distances[defer.key] =  response.routes[0].legs[0].distance.value;
                 defer.resolve(response);
             } else {
+                console.log(status);
                 defer.reject(status);
             }
         });
         return defer;
     }
 
-    function submit() {
-        console.log("submitting");
-
-        // there will always be (n choose 2) unordered pairs of nodes
-        // where n is the number of waypoints
-        // console.log(_.size(distances) >= choose(waypoints.length, 2));
-        $.ajax({
-            type : "POST",
-            url : "/submit",
-            data: JSON.stringify({
-                "ids" : ids,
-                "distances" : distances,
-                "hours" : hours,
-                "dependencies" : deps
-            }),
-            contentType: 'application/json; charset=UTF-8',
-            success: renderTSPRoute
-        });
-    }
-
-    function local_submit() {
-        var data = find_itinerary(hours, distances, deps);
+    function local_solve() {
+        console.log("solving");
+        var data = Tsp.findItinerary(hours, distances, deps);
         renderTSPRoute(data);
     }
 
     function renderTSPRoute(data) {
         console.log("got response");
         var sched = data["schedule"];
+        if (!sched) {
+            console.log("No solution.");
+            return;
+        }
+
         var legs = [];
         for (var i = 0; i < sched.length - 1; i++) {
             var leg = find_directions(sched[i], sched[i+1]);
@@ -328,7 +284,6 @@ define([
 
         directionsDisplay.setDirections(combined);
     }
-    
     
     function iconPath(prefix, letter) {
         return prefix 
@@ -359,10 +314,7 @@ define([
         //         model.get("latest") -> xxyy
         //         
         //     xxyy is an int and xx represents the hour and yy the minutes
-        //          on a 24-hour clock, so 22:30 is 10:30 PM
-        //     m is an int and represents the minutes, so 185 is
-        //       185 minutes, or 3 hours and 5 minutes        
-        //
+        //     m is an int and represents the minutes
         //
         // Output : all keys in minutes, so really just converting xxyy to minutes
 
@@ -378,15 +330,19 @@ define([
         var l_min = (latest % 100);
         latest = l_hour * 60 + l_min;
         
-        // return {
-        //     "earliest" : earliest,
-        //     "duration" : taskModel.get("duration"),
-        //     "latest" : latest
-        // };
         return [earliest, taskModel.get("duration"), latest];
     }
 
     return {
         initGoogleMaps: initGoogleMaps,
+        map: map,
+        iconPath: iconPath,
+        removeMarker: removeMarker,
+        solveTsp: solveTsp,
+        MARKER_PATH: M_G,
+        MARKER_HOVER_PATH: M_R,
+        MARKER_SELECTED_PATH: M_O,
+        ZOOM_DEFAULT: ZOOM_DEFAULT,
+        NYC_LATLNG: NYC_LATLNG
     };
 });

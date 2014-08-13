@@ -3,8 +3,7 @@ define([
     'underscore',
     'backbone',
     'text!templates/dependency.html',
-    'models/dependency'
-], function ($, _, Backbone, DependencyTemplate, Dependency) {
+], function ($, _, Backbone, DependencyTemplate) {
     var DependencyView = Backbone.View.extend({
         tagName: "tr",
         template: _.template(DependencyTemplate),

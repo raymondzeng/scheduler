@@ -4,8 +4,8 @@ define([
     'backbone',
     'text!templates/task.html',
     'views/dependency',
-    'models/Task'
-], function ($, _, Backbone, taskTemplate, DependencyView, Task) {
+    'gmaps-utils'
+], function ($, _, Backbone, taskTemplate, DependencyView, MapUtils) {
     var TaskView = Backbone.View.extend({
         tagName: "tr",
         template: _.template(taskTemplate),
@@ -26,7 +26,7 @@ define([
 
             var marker = this.model.get("marker");
             if (marker) 
-                marker.setMap(map);
+                marker.setMap(MapUtils.map);
             
             _.bindAll(this, 'render');
             this.model.dependencies.bind('reset', this.render);
@@ -62,8 +62,8 @@ define([
         },
         
         addDeps: function() {
-            var Tasks = this.collection;
-            var selected = Tasks.selected();
+            var tasks = this.model.collection;
+            var selected = tasks.selected();
             var taskView = this;
             var depViews = _.each(selected, function(v) {
                 taskView.model.dependencies.create({
@@ -73,7 +73,7 @@ define([
                 });
             });
             
-            Tasks.deselectAll();
+            tasks.deselectAll();
         },
         
         editTime: function(e) {
@@ -98,9 +98,7 @@ define([
         clear: function() {
             var marker = this.model.get("marker");
             if (marker) {
-                waypoints = _.without(waypoints, marker);
-                marker.setMap(null);
-                zoomToFit();
+                MapUtils.removeMarker(marker);
             }
             
             this.model.dependencies.each(function(model) {
@@ -114,14 +112,14 @@ define([
             var marker = this.model.get("marker");
             if (this.model.get("selected")) {
                 this.$el.children(".task_str").addClass("dep_selected");
-                // marker.path = MARKER_SELECTED_PATH;
-                // marker.prev = marker.path;
-                // marker.setIcon(iconPath(marker.path,  marker.letter));
+                marker.path = MapUtils.MARKER_SELECTED_PATH;
+                marker.prev = marker.path;
+                marker.setIcon(MapUtils.iconPath(marker.path,  marker.letter));
             } else {
                 this.$el.children(".task_str").removeClass("dep_selected");
-                // marker.path = MARKER_PATH;
-                // marker.prev = marker.path;
-                // marker.setIcon(iconPath(marker.path, marker.letter));
+                marker.path = MapUtils.MARKER_PATH;
+                marker.prev = marker.path;
+                marker.setIcon(MapUtils.iconPath(marker.path, marker.letter));
             }
         }
     });

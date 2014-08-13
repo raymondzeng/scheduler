@@ -3,7 +3,7 @@ define([
     'backbone',
     'collections/task',
     'views/task',
-    'gmaps-utils'
+    'gmaps-utils',
 ], function ($, Backbone, Tasks, TaskView, MapsUtils) {
     var AppView = Backbone.View.extend({
         el: $(document),
@@ -15,6 +15,10 @@ define([
             this.tasks.fetch();
             MapsUtils.initGoogleMaps(this.tasks);
             this.setupDomListeners();
+        },
+        
+        events: {
+            "click #submit_btn" : "doTsp"
         },
         
         addOne: function(task) {
@@ -43,6 +47,11 @@ define([
                 thisApp.$("#landing").slideDown();
                 thisApp.$("html").css("background", 'url("img/map.png")');
             });
+        },
+
+        doTsp: function() {
+            console.log("h");
+            MapsUtils.solveTsp(this.tasks);
         }
     });
     
