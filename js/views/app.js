@@ -39,7 +39,9 @@ define([
                 thisApp.$("#app").show();
                 google.maps.event.trigger(map, 'resize');
                 thisApp.$("html").css("background", "white");
-                thisApp.$("#searchTextField").focus();
+                if (thisApp.$("#searchTextField").val() == "") {
+                    thisApp.$("#searchTextField").focus();
+                }
             });
             
             this.$("#app a").click(function() {
