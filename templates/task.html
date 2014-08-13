@@ -1,0 +1,31 @@
+<td> <%- letter %> </td>
+<td class="task_str">
+  <b> <%- name %> </b>
+  <br>
+  <b> <%- id %> </b>
+  <address> <%- address %> </address>
+</td>
+<td class="time">
+  <div class="edit_view">
+    <%- earliest %>
+  </div>
+  <input type="text" class="edit" value="<%- earliest %>" which="earliest">
+</td>
+<td class="time">
+  <div class="edit_view">
+    <%- duration %>
+  </div>
+  <input type="text" class="edit" value="<%- duration %>" which="duration">
+</td>
+<td class="time">
+  <div class="edit_view">
+    <%- latest %>
+  </div>
+  <input type="text" class="edit" value="<%- latest %>" which="latest">
+</td>
+<td>
+  <input type="button" class="button dep_btn" value="+" disabled>
+</td>
+<td>
+  <input type="button" class="button delete_btn" value="x">
+</td>
