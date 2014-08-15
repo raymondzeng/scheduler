@@ -34,7 +34,7 @@ define([
                 }
             });    
 
-            this.$("#go a").click(function() {
+            this.$("#to_app").click(function() {
                 thisApp.$("#landing").slideUp();
                 thisApp.$("#app").show();
                 google.maps.event.trigger(map, 'resize');
@@ -44,7 +44,7 @@ define([
                 }
             });
             
-            this.$("#app a").click(function() {
+            this.$("#to_overlay").click(function() {
                 thisApp.$("#app").hide();
                 thisApp.$("#landing").slideDown();
                 thisApp.$("html").css("background", 'url("img/map.png")');
@@ -52,7 +52,6 @@ define([
         },
 
         doTsp: function() {
-            console.log("h");
             MapsUtils.solveTsp(this.tasks);
         }
     });
