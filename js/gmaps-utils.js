@@ -333,11 +333,17 @@ define([
         return [earliest, taskModel.get("duration"), latest];
     }
 
+    function resize() {
+        GoogleMaps.event.trigger(map, 'resize');
+        zoomToFit();
+    }
+    
     return {
         initGoogleMaps: initGoogleMaps,
         map: map,
         iconPath: iconPath,
         removeMarker: removeMarker,
+        resize: resize,
         solveTsp: solveTsp,
         MARKER_PATH: M_G,
         MARKER_HOVER_PATH: M_R,

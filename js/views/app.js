@@ -37,7 +37,7 @@ define([
             this.$("#to_app").click(function() {
                 thisApp.$("#landing").slideUp();
                 thisApp.$("#app").show();
-                google.maps.event.trigger(map, 'resize');
+                MapsUtils.resize();
                 thisApp.$("html").css("background", "white");
                 if (thisApp.$("#searchTextField").val() == "") {
                     thisApp.$("#searchTextField").focus();
@@ -48,6 +48,7 @@ define([
                 thisApp.$("#app").hide();
                 thisApp.$("#landing").slideDown();
                 thisApp.$("html").css("background", 'url("img/map.png")');
+                thisApp.$("html").css("background-size", "100%");
             });
         },
 
