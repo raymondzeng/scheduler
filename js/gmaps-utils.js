@@ -154,6 +154,7 @@ define([
     function smallestBound() {    
         // Create a new viewpoint bound
         var bounds = new GoogleMaps.LatLngBounds();
+
         // Go through each...
         for (var i = 0; i < waypoints.length; i++) {
             var marker = waypoints[i];
@@ -183,7 +184,7 @@ define([
     }
     
     function solveTsp(Tasks) {
-        console.log("submit");
+        console.log("submitted");
 
         // create list of task ids
         ids = waypoints.map(function(m) {
@@ -254,6 +255,7 @@ define([
                 defer.resolve(response);
             } else {
                 console.log(status);
+                alert("Google Maps API Error: " + status + ". If it's over query limit, just keep trying");
                 defer.reject(status);
             }
         });
@@ -270,6 +272,7 @@ define([
         console.log("got response");
         var sched = data["schedule"];
         if (!sched) {
+            alert("No solution.");
             console.log("No solution.");
             return;
         }

@@ -115,10 +115,6 @@ table {
     border-color:#269abc
 }
 
-.button:active {
-    background: #1b435e;
-}
-
 .button.delete_btn {
     background-color: #d9534f;
     border-color: #d43f3a;
@@ -262,10 +258,6 @@ tr td:nth-child(4) {
 .dependency td:first-child div {
     border-left: 1px solid #ccc;
     padding-left: 10px;
-}
-
-.clicked {
-    background: green;
 }
 
 #instructions {

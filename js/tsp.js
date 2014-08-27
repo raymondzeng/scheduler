@@ -139,26 +139,43 @@ define([
 
     // tests: passed
     // var tasks = { "1": [10, 2, 24],
-    //           "2": [11, 1, 14],
-    //           "3": [13, 1, 15],
-    //           "4": [14, 4, 18] }
-
+    //               "2": [11, 1, 14],
+    //               "3": [13, 1, 15],
+    //               "4": [14, 4, 18] }
+    
     // var distances = { "1,2": 10,
-    //               "1,3" : 12,
-    //               "1,4" : 10,
-    //               "2,3" : 5,
-    //               "2,4" : 19,
-    //               "3,4" : 16 }
-
+    //                   "1,3" : 12,
+    //                   "1,4" : 10,
+    //                   "2,3" : 5,
+    //                   "2,4" : 19,
+    //                   "3,4" : 16 }
+    
     // var deps = { "1": [],
-    //          "2": ["1"],
-    //          "3": [],
-    //          "4": ["3"] }
-
+    //              "2": ["1"],
+    //              "3": [],
+    //              "4": ["3"] }
+    
     // console.log(find_itinerary(tasks, distances, deps));
 
 
 
+    function build_graph(tasks, distances, deps) {
+        var graph = {};
+        var task_ids = Object.keys(tasks);
+        
+        for (var i = 0; i < task_ids.length; i++) {
+            var edges = {};
+            
+            for (var j = i; j < task_ids.length; j++) {
+                if (!deps[task_id[i]].contains(task_ids[j])) {
+                    edges[task_id[j]] = distances[i + "," + j];
+                }
+            }
+            
+            graph[task_ids[i]] = edges;
+        }
+    }
+    
     function prim(G, s) {
         // """
         // G : connected graph represented as adj. list
