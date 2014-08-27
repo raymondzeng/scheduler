@@ -80,7 +80,7 @@ define([
             console.log("edit");
             var edit_box = $(e.target).siblings(".edit");
             edit_box.css("display", "block").focus().select();
-            $(e.target).hide();
+            $(e.target).children(".edit_view").hide();
         },
         
         close: function(e) {
