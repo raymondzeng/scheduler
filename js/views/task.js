@@ -77,8 +77,6 @@ define([
         },
         
         editTime: function(e) {
-            console.log("edit");
-            console.log(e.target);
             var edit_box = $(e.target).siblings(".edit");
             edit_box.css("display", "block").focus().select();
             $(e.target).hide();
